@@ -386,6 +386,8 @@ select.basemap:focus{outline:none;border-color:#3D4C63}
 .pin--out{color:#898989}
 .pin--t::after{content:"";width:34%;height:34%;border-radius:50%;background:#15181D}
 .pin--staged{border-style:dashed}
+.pin--free{border-style:dashed;border-color:#718096;background:#E7EDF5}
+#map.is-link-connect .pin-wrap{cursor:crosshair;touch-action:none}
 .pin--sel{transform:scale(1.12);box-shadow:0 0 0 3px var(--signal),0 0 0 6px rgba(255,176,32,.28),0 1px 4px rgba(0,0,0,.5)}
 .pin--drag{cursor:grabbing;transform:scale(1.2)}
 .leaflet-marker-icon{transition:none}
@@ -467,8 +469,50 @@ select.basemap:focus{outline:none;border-color:#3D4C63}
 #linkCard .lk-btns{display:flex;gap:6px;flex:0 0 auto}
 #linkCard .tool{padding:4px 9px;font-size:11.5px}
 #linkCard .tool[disabled]{opacity:.45}
-/* 模拟导航卡片：固定在地图左下角，宽度受视口约束（自检第 63 条会查"控件不许跑到视口外"）。
-   它挂在 body 上、不参与 Leaflet 的 pane 层序，所以不会去碰 tile/overlay/marker 的 z-index。 */
+#linkCard .lk-steps{display:flex;gap:6px;flex:0 0 100%}
+#linkCard .lk-reason{flex:1 1 100%;color:#FFCF82;line-height:1.5}
+/* 模拟导航卡片约束在地图区域内；图层和播放状态均独立于图纸与撤销历史。 */
+#navCard[hidden]{display:none}
+#navCard{position:absolute;left:12px;bottom:12px;z-index:800;width:340px;max-width:calc(100% - 24px);max-height:calc(100% - 66px);overflow:auto;
+  padding:12px;background:rgba(16,20,26,.97);border:1px solid #394351;border-radius:9px;box-shadow:0 8px 28px #0007;color:var(--text);font-size:12px}
+.nav-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-size:14px}
+.nav-head .x{font-size:14px;padding:4px;color:var(--text-mid)}
+.nav-fields{display:grid;grid-template-columns:42px minmax(0,1fr) 28px;gap:7px;align-items:center}
+.nav-fields label{color:var(--text-mid);font-size:11px}
+.nav-fields label[for=navTo]{grid-column:1}
+.nav-fields #navSwap{grid-column:3;grid-row:1 / span 2;height:100%;padding:0;min-width:0}
+.nav-picker{position:relative;min-width:0}
+.nav-picker input{width:100%;min-width:0;height:29px;padding:0 7px;border:1px solid var(--rule);border-radius:3px;background:var(--ink-600);color:var(--text);font-size:12px}
+.nav-picker input:focus{outline:none;border-color:var(--signal)}
+.nav-results[hidden]{display:none}
+.nav-results{position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:3;max-height:166px;overflow:auto;background:#1C242F;border:1px solid #4A596E;border-radius:4px;box-shadow:0 6px 18px #0007}
+.nav-result{display:block;width:100%;padding:7px 8px;text-align:left;color:var(--text);cursor:pointer;background:transparent}
+.nav-result+.nav-result{border-top:1px solid var(--rule-soft)}
+.nav-result b,.nav-result small{display:block;overflow-wrap:anywhere}
+.nav-result b{font-size:12px;font-weight:500}.nav-result small{font-size:10px;color:var(--text-mid);margin-top:3px}
+.nav-result:hover,.nav-result[aria-selected=true]{background:#334157}
+.nav-search-note{font-size:11px;padding:9px;color:var(--text-mid);line-height:1.5}
+#navCard select{min-width:0;max-width:100%;height:29px;border:1px solid var(--rule);border-radius:3px;background:var(--ink-600);color:var(--text);font-size:12px;padding:0 5px}
+.nav-options{display:flex;gap:12px;margin:9px 0;color:var(--text-mid);flex-wrap:wrap}
+.nav-options label{display:flex;gap:5px;align-items:center}
+.nav-summary{color:#FFCD84;line-height:1.5}
+.nav-itinerary{max-height:94px;overflow:auto;margin:7px 0}
+.nav-trip{display:flex;gap:7px;line-height:1.6;color:var(--text-mid);padding:3px 0}
+.nav-trip i{width:4px;min-height:31px;flex:none;border-radius:3px}
+.nav-trip span{min-width:0;overflow-wrap:anywhere}.nav-trip b{color:var(--text);font-weight:600}
+.nav-live{min-height:20px;line-height:1.6;color:var(--text);overflow-wrap:anywhere}
+.nav-live[data-state=finished]{color:var(--live)}
+.nav-announcement{margin-top:10px;padding:9px 11px;border-left:2px solid var(--signal);background:var(--ink-900);font-size:12px;line-height:1.6;overflow-wrap:anywhere;max-height:145px;overflow:auto}
+#navAnnouncementEn{margin-top:5px;color:var(--text-mid);font-size:11px}
+#navProgress{width:100%;height:5px;display:block;margin:7px 0 10px;accent-color:var(--signal)}
+.nav-controls{display:flex;gap:6px;flex-wrap:wrap}.nav-controls .btn{min-width:0;padding:6px 10px;height:30px;font-size:12px}
+.nav-controls button:disabled{opacity:.4;cursor:default}
+.nav-toggles{display:flex;gap:13px;margin:10px 0 7px;flex-wrap:wrap;color:var(--text-mid)}
+.nav-toggles label{display:flex;gap:4px;align-items:center}.nav-toggles input{accent-color:var(--signal)}
+.nav-note{display:block;font-size:10px;line-height:1.5;color:var(--text-dim)}
+.nav-train-wrap{background:none!important;border:0!important}
+.nav-train{width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:#FFCA67;color:#15202C;
+  border:2px solid #FFF;border-radius:7px;box-shadow:0 2px 8px #000a;font-size:16px;line-height:1}
 /* 注意：不要给 .leaflet-pane 统一设 z-index:auto —— Leaflet 靠
    tile 200 / overlay 400 / shadow 500 / marker 600 / tooltip 650 排层序，
    抹平后站名标签会被瓦片盖住（实测标签完全看不见）。 */
@@ -706,9 +750,10 @@ select.basemap:focus{outline:none;border-color:#3D4C63}
       <button class="tool" id="tAdd" data-tool="add" title="点击地图追加站点到当前线路；靠近已有站点会自动合并为换乘站">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="lbl">加站</span><span class="kbd">A</span>
       </button>
-      <button class="tool" id="tLink" data-tool="link" title="连线：先把站点定在地图上、再按点击顺序串成线路（快捷键 C）">
+      <button class="tool" id="tLink" data-tool="link" title="连线：先布置车站，再从圆点拖线接到另一站（快捷键 C）">
         <svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="6" r="2.6"/><path d="M7.8 16.2L16.2 7.8"/></svg><span class="lbl">连线</span><span class="kbd">C</span>
       </button>
+      <button class="tool" id="tNavigate" title="选择起点终点，模拟乘车导航（快捷键 R）"><svg viewBox="0 0 24 24"><path d="M5 18V8a4 4 0 014-4h6a4 4 0 014 4v10H5zM8 8h8M8 12h8M7 21l2-3M17 21l-2-3"/></svg><span>导航</span></button>
       <button class="tool tool--icon" id="tNewLine" title="新建线路（快捷键 L）">
         <svg viewBox="0 0 24 24"><path d="M5 19L12 5l7 14"/><circle cx="12" cy="12" r="9"/></svg>
       </button>
@@ -787,6 +832,7 @@ select.basemap:focus{outline:none;border-color:#3D4C63}
     <!-- CENTER: map -->
     <section class="mapwrap">
       <div id="map"></div>
+      <section id="navCard" aria-label="模拟导航" hidden></section>
       <div class="map-hud">
         <svg id="guides" xmlns="http://www.w3.org/2000/svg"></svg>
         <div class="hud hud--tl" id="modeWrap">
@@ -832,6 +878,7 @@ select.basemap:focus{outline:none;border-color:#3D4C63}
 <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
 
 <script src="vendor/leaflet.js"></script>
+<script src="vendor/pinyin-pro.js"></script>
 <script>window.L||document.write('<scr'+'ipt src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/scr'+'ipt>');</script>
 <script>
 "use strict";
@@ -1125,9 +1172,10 @@ function initMap() {
   layerHandle = L.layerGroup().addTo(map); // 曲线调形把手
   layerBadge = L.layerGroup().addTo(map);  // 线路编号牌（跟着最长那段走）
 
+  navBindMap();
   map.on("click", onMapClick);
   map.on("mousemove", (e) => { $("#sLng").textContent = e.latlng.lng.toFixed(5); $("#sLat").textContent = e.latlng.lat.toFixed(5); });
-  map.on("zoomend", () => { $("#sZoom").textContent = map.getZoom(); renderMap(); });
+  map.on("zoomend", () => { $("#sZoom").textContent = map.getZoom(); renderMap(); if (nav) navDrawCursor(true); });
   /* 视图停稳后重算一档平移（平移量按图中心取，一屏内极差 <20 m，见上面注释）。
      挂在 moveend 而不是 move：拖动中每帧改 tilePane 的 transform 会让瓦片跟着抖。 */
   map.on("moveend zoomend resize viewreset", applyDatumShiftSafe);
@@ -1195,7 +1243,7 @@ let inSelfTest = false;
    用户那份之后才落地，那时按屏幕中心记账就等于把合成图纸的视图写进用户档。
    inSelfTest 只在同步阶段为真，拦不住这种迟到事件，所以再压一段时间。 */
 let viewLockUntil = 0;
-function viewCommitAllowed() { return !inSelfTest && performance.now() >= viewLockUntil; }
+function viewCommitAllowed() { return !inSelfTest && !navProgrammaticView && performance.now() >= viewLockUntil; }
 /* 视图记账的"谁发起"归属。时间窗是钝器：moveend 在宽限期内落地、记账的防抖回调却
    在宽限期外跑，那 700 毫秒的缝就是示例档被写成网格用例视图的那条路。真正的判据是
    "这趟移动是不是用户发起的"：
@@ -1234,7 +1282,7 @@ const numVal = (v) => isNum(v) ? v : (typeof v === "string" && v.trim() !== "" &
    不可打印字符则直接拒绝 —— 导入的文件不该被静默改写，而应用内要让用户永远造不出
    坏数据。为什么较真控制字符：站名里一个 \u0001 就会让导出的 SVG 不再是合法 XML
    （实测 DOMParser 报 "PCDATA invalid Char"），PNG 于是变成"导出成功但是坏图"。 */
-const TEXT_LIMITS = { projName: 80, name: 60, badge: 4, note: 3000 };
+const TEXT_LIMITS = { projName: 80, name: 60, nameEn: 120, badge: 4, note: 3000 };
 const BAD_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/;
 function clipText(kind, v) {
   const max = TEXT_LIMITS[kind] || 200;
@@ -1276,6 +1324,7 @@ function validateProject(p) {
     } else if (l.bends) bad.push(nm + " 的 bends 不是对象");
     if (!isNum(l.width) || l.width <= 0 || l.width > 40) bad.push(nm + " 线宽非法 " + l.width);
     checkText(bad, nm, "name", l.name, false);
+    if (l.nameEn !== undefined) checkText(bad, nm + " 的英文报站名", "nameEn", l.nameEn, true);
     checkText(bad, nm + " 的编号", "badge", String(l.badge == null ? "" : l.badge), true);
   });
   Object.values(p.stations).forEach((s) => {
@@ -1285,6 +1334,7 @@ function validateProject(p) {
     if (Math.abs(s.lat) > 90 || Math.abs(s.lng) > 180) bad.push("车站 " + nm + " 坐标越界");
     if (s.labelOff && (!isNum(s.labelOff.dx) || !isNum(s.labelOff.dy))) bad.push("车站 " + nm + " 的铭牌偏移非法");
     checkText(bad, "车站 " + nm, "name", s.name, false);
+    if (s.nameEn !== undefined) checkText(bad, "车站 " + nm + " 的英文报站名", "nameEn", s.nameEn, true);
     checkText(bad, "车站 " + nm + " 的备注", "note", String(s.note == null ? "" : s.note), true);
   });
   checkText(bad, "图纸名", "projName", String(p.name == null ? "" : p.name), false);
@@ -1360,6 +1410,8 @@ function setSaveState(s, why) {
    校验放在 migrate+normalize 之后 —— 悬空站引用这类可以自动修，
    只有修不掉的（坐标非数值 / 经纬度越界）才算真坏档。 */
 function openProject(id) {
+  navClose();
+  if (!inSelfTest && P && P.id !== id && dirty && (!dirtyOwner || dirtyOwner === P.id)) saveNow();
   const attempt = (key) => {
     const raw = store.get(key, null);
     if (!raw || typeof raw !== "object") return null;
@@ -1376,6 +1428,7 @@ function openProject(id) {
     console.warn("[open] 主档校验不通过，回滚到 prev", id);
     toast("当前存档校验不通过，已回滚到上一份可用存档", "good");
   }
+  linkReset();
   P = p;
   try { lastBytes = new Blob([JSON.stringify(P)]).size; } catch (e) { lastBytes = 0; }
   clearMarkerPools();
@@ -1490,6 +1543,11 @@ function normalize(p) {
     l.style = l.style || "solid";
     l.visible = l.visible !== false;
     l.name = clipInto("name", String(l.name || (i + 1) + " 号线"));
+    /* 报站名可选；旧档不补空字段，避免只打开图纸就改变存档。 */
+    if (Object.prototype.hasOwnProperty.call(l, "nameEn")) {
+      const nameEn = clipInto("nameEn", l.nameEn).trim();
+      if (nameEn) l.nameEn = nameEn; else delete l.nameEn;
+    }
     /* 导入的档没写编号时，从名称推（"磁浮线"→磁浮），而不是按数组下标给一个数字 */
     l.badge = clipInto("badge", String(l.badge == null || String(l.badge).trim() === "" ? autoBadge(l.name, i) : l.badge));
   });
@@ -1511,6 +1569,10 @@ function normalize(p) {
     s.id = s.id || uid("s_");
     s.lines = revIds.get(s.id) || [];
     s.name = clipInto("name", String(s.name || "新站"));
+    if (Object.prototype.hasOwnProperty.call(s, "nameEn")) {
+      const nameEn = clipInto("nameEn", s.nameEn).trim();
+      if (nameEn) s.nameEn = nameEn; else delete s.nameEn;
+    }
     s.note = clipInto("note", String(s.note || ""));
     s.outTransfer = !!s.outTransfer;
     /* 坐标走 numVal：数字字符串这类"同一种数据的另一种写法"要收，
@@ -1527,10 +1589,13 @@ function normalize(p) {
   return p;
 }
 function createProject(name, asTemplate) {
+  navClose();
+  if (!inSelfTest && dirty && P && (!dirtyOwner || dirtyOwner === P.id)) saveNow();
   const p = blankProject(name);
   reg.projects.unshift({ id: p.id, name: p.name, updatedAt: p.updatedAt, lines: 0, stations: 0 });
   reg.active = p.id;
   store.set(K_REG, reg);
+  linkReset();
   P = p; hist = []; future = []; sel = { line: null, station: null };
   store.set(K_PROJ(p.id), p);
   renderAll(); fillProjSelect();
@@ -1577,6 +1642,7 @@ function histTrim(stack) {
   return bytes;
 }
 function pushHistory() {
+  navClose();
   /* 自检里的模拟拖动/微调也会走到这里，不拦：拦了就没法验证"连按只记一次撤销"
      这类行为。改由 selfTest 在开头整体存取 hist/future，跑完原样放回，
      所以合成图纸的快照不会留在用户的撤销栈里。 */
@@ -1605,18 +1671,21 @@ function settleDirtyAfterHistory() {
   return true;
 }
 function restore(json) {
+  navClose();
   const d = JSON.parse(json);
+  linkReset();
   P.lines = d.lines; P.stations = d.stations;
   if (!line(sel.line)) sel.line = P.lines[0] ? P.lines[0].id : null;
   if (sel.station && !station(sel.station)) sel.station = null;
   renderAll(); markDirty(); settleDirtyAfterHistory();
 }
-function undo() { if (!hist.length) return; future.push(snapshot()); histTrim(future); restore(hist.pop()); updateHistoryButtons(); toast("已撤销"); }
+function undo() { if (tool === "link" && (linkDrag || linkChain.length)) { linkUndoStep(); return; } if (!hist.length) return; future.push(snapshot()); histTrim(future); restore(hist.pop()); updateHistoryButtons(); toast("已撤销"); }
 function redo() { if (!future.length) return; hist.push(snapshot()); histTrim(hist); restore(future.pop()); updateHistoryButtons(); toast("已重做"); }
 function updateHistoryButtons() {
-  $("#tUndo").disabled = !hist.length;
+  const draft = tool === "link" && !!(linkDrag || linkChain.length);
+  $("#tUndo").disabled = !hist.length && !draft;
   $("#tRedo").disabled = !future.length;
-  $("#tUndo").title = "撤销（Ctrl+Z）" + (hist.length ? " · 剩 " + hist.length + " 步" : "");
+  $("#tUndo").title = draft ? "撤回一步连接（Ctrl+Z）" : "撤销（Ctrl+Z）" + (hist.length ? " · 剩 " + hist.length + " 步" : "");
   $("#tRedo").title = "重做（Ctrl+Shift+Z）" + (future.length ? " · 剩 " + future.length + " 步" : "");
 }
 
@@ -2641,6 +2710,661 @@ function predictNext(l) {
   return map.containerPointToLatLng({ x: nx, y: ny });
 }
 
+// BEGIN NAV PLAN
+/* Route over station occurrences, not station names. A repeated station on one
+   line keeps its actual segment index; transfers use the physical station ID.
+   Distances describe station-to-station geography, not the drawn bend length. */
+function planRide(project, fromId, toId, preference = "transfers") {
+  const result = (ok, reason, code) => ({ ok, reason, code, from: fromId, to: toId,
+    legs: [], stations: [], transfers: 0, stops: 0, distanceKm: 0 });
+  const stationMap = project && project.stations;
+  if (!stationMap || !Array.isArray(project.lines)) return result(false, "地图数据无效", "invalid-project");
+  const owns = (id) => Object.prototype.hasOwnProperty.call(stationMap, id) && !!stationMap[id];
+  if (!owns(fromId)) return result(false, "出发站不存在，请重新选择", "missing-from");
+  if (!owns(toId)) return result(false, "到达站不存在，请重新选择", "missing-to");
+  if (fromId === toId) {
+    const same = result(true, "起点和终点相同，你已经到达", "same-station");
+    same.stations = [fromId];
+    return same;
+  }
+  const nodes = [], atStation = new Map();
+  const lines = project.lines.filter((l) => l && l.visible !== false && l.style !== "dash" && Array.isArray(l.stations));
+  lines.forEach((line) => {
+    const ids = line.stations, lineNodes = [];
+    ids.forEach((sid, index) => {
+      if (!owns(sid)) { lineNodes.push(-1); return; }
+      const number = nodes.length;
+      nodes.push({ sid, lineId: line.id, index, ride: [] });
+      lineNodes.push(number);
+      if (!atStation.has(sid)) atStation.set(sid, []);
+      atStation.get(sid).push(number);
+    });
+    const join = (a, b, segmentIndex) => {
+      if (a < 0 || b < 0) return;
+      nodes[a].ride.push({ next: b, segmentIndex, direction: 1 });
+      nodes[b].ride.push({ next: a, segmentIndex, direction: -1 });
+    };
+    for (let i = 0; i + 1 < lineNodes.length; i++) join(lineNodes[i], lineNodes[i + 1], i);
+    if (line.loop && ids.length >= 3) join(lineNodes[ids.length - 1], lineNodes[0], ids.length - 1);
+  });
+  const boardable = (sid) => (atStation.get(sid) || []).filter((n) => nodes[n].ride.length);
+  const origins = boardable(fromId), destinations = boardable(toId);
+  if (!origins.length) return result(false, "出发站尚未接入运营线路，请先连接车站", "unserved-from");
+  if (!destinations.length) return result(false, "到达站尚未接入运营线路，请先连接车站", "unserved-to");
+
+  /* Two states per occurrence: ready to board (even), arrived by train (odd).
+     A transfer must be followed by a ride, so changing lines twice at one
+     station cannot teleport between repeated occurrences of the same line. */
+  const count = nodes.length * 2, transfers = new Float64Array(count), stops = new Float64Array(count);
+  transfers.fill(Infinity); stops.fill(Infinity);
+  const previous = new Int32Array(count); previous.fill(-1);
+  const previousLeg = new Array(count), heap = [];
+  const fewestStops = preference === "stops";
+  const compare = (a, b) => fewestStops ? a.s - b.s || a.t - b.t || a.state - b.state : a.t - b.t || a.s - b.s || a.state - b.state;
+  const push = (item) => {
+    heap.push(item);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (compare(heap[parent], item) <= 0) break;
+      heap[i] = heap[parent]; i = parent;
+    }
+    heap[i] = item;
+  };
+  const pop = () => {
+    const top = heap[0], tail = heap.pop();
+    if (heap.length) {
+      let i = 0;
+      while (i * 2 + 1 < heap.length) {
+        let child = i * 2 + 1;
+        if (child + 1 < heap.length && compare(heap[child + 1], heap[child]) < 0) child++;
+        if (compare(tail, heap[child]) <= 0) break;
+        heap[i] = heap[child]; i = child;
+      }
+      heap[i] = tail;
+    }
+    return top;
+  };
+  const relax = (state, t, s, parent, leg) => {
+    const better = fewestStops ? s < stops[state] || (s === stops[state] && t < transfers[state]) :
+      t < transfers[state] || (t === transfers[state] && s < stops[state]);
+    if (!better) return;
+    transfers[state] = t; stops[state] = s; previous[state] = parent; previousLeg[state] = leg;
+    push({ state, t, s });
+  };
+  origins.forEach((n) => relax(n * 2, 0, 0, -1, null));
+  const expandedTransfers = new Map();
+  let finalState = -1;
+  while (heap.length) {
+    const entry = pop(), state = entry.state;
+    if (entry.t !== transfers[state] || entry.s !== stops[state]) continue;
+    const nodeNumber = state >> 1, node = nodes[nodeNumber];
+    if (node.sid === toId) { finalState = state; break; }
+    node.ride.forEach((edge) => {
+      const next = nodes[edge.next];
+      relax(edge.next * 2 + 1, entry.t, entry.s + 1, state, {
+        lineId: node.lineId, from: node.sid, to: next.sid, fromIndex: node.index,
+        toIndex: next.index, segmentIndex: edge.segmentIndex, direction: edge.direction
+      });
+    });
+    if (!(state & 1)) continue;
+    /* Transfer destinations depend on station and line, not the occurrence.
+       Only the first settled arrival of each line needs to expand this list. */
+    let done = expandedTransfers.get(node.sid);
+    if (!done) { done = new Set(); expandedTransfers.set(node.sid, done); }
+    if (done.has(node.lineId)) continue;
+    done.add(node.lineId);
+    (atStation.get(node.sid) || []).forEach((nextNumber) => {
+      if (nodes[nextNumber].lineId !== node.lineId && nodes[nextNumber].ride.length) {
+        relax(nextNumber * 2, entry.t + 1, entry.s, state, null);
+      }
+    });
+  }
+  if (finalState < 0) return result(false, "这两个站目前无法通过运营线路到达，请检查连线或选择其他车站", "unreachable");
+  const route = result(true, "", "ready");
+  for (let state = finalState; previous[state] >= 0; state = previous[state]) {
+    if (previousLeg[state]) route.legs.push(previousLeg[state]);
+  }
+  route.legs.reverse();
+  route.stations.push(fromId);
+  const distance = (a, b) => {
+    const coords = [a.lat, a.lng, b.lat, b.lng].map(Number);
+    if (!coords.every(Number.isFinite)) return 0;
+    const rad = Math.PI / 180, deltaLat = (coords[2] - coords[0]) * rad, deltaLng = (coords[3] - coords[1]) * rad;
+    const h = Math.sin(deltaLat / 2) ** 2 + Math.cos(coords[0] * rad) * Math.cos(coords[2] * rad) * Math.sin(deltaLng / 2) ** 2;
+    return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(Math.max(0, h))));
+  };
+  route.legs.forEach((leg, i) => {
+    route.stations.push(leg.to);
+    if (i > 0 && route.legs[i - 1].lineId !== leg.lineId) route.transfers++;
+    route.distanceKm += distance(stationMap[leg.from], stationMap[leg.to]);
+  });
+  route.stops = route.legs.length;
+  return route;
+}
+// END NAV PLAN
+
+// BEGIN NAV PLAYBACK
+/* Simulation time is deliberately separate from geography and map zoom. */
+function createNavPlayback(plan, durations) {
+  const finished = !plan.legs.length;
+  return { plan, durations: plan.legs.map((_, i) => Math.max(.05, Number(durations[i]) || 3)),
+    status: finished ? "finished" : "running", phase: "stop", index: 0, elapsed: 0,
+    arrivals: [{ station: plan.from, final: finished }], transfers: [] };
+}
+function navStopDuration(state) {
+  const i = state.index, legs = state.plan.legs;
+  return i > 0 && legs[i - 1].lineId !== legs[i].lineId ? 2.6 : .9;
+}
+function advanceNavPlayback(state, dt, stopAtEvent = false) {
+  const events = [];
+  if (state.status !== "running" || !Number.isFinite(dt) || dt <= 0) return events;
+  while (dt > 0 && state.status === "running") {
+    const duration = state.phase === "stop" ? navStopDuration(state) : state.durations[state.index];
+    const remaining = Math.max(0, duration - state.elapsed), take = Math.min(dt, remaining);
+    state.elapsed += take; dt -= take;
+    if (state.elapsed + 1e-9 < duration) break;
+    state.elapsed = 0;
+    if (state.phase === "stop") {
+      const i = state.index, legs = state.plan.legs;
+      if (i > 0 && legs[i - 1].lineId !== legs[i].lineId) {
+        const event = { type: "transfer", station: legs[i].from, lineId: legs[i].lineId };
+        state.transfers.push(event); events.push(event);
+      }
+      state.phase = "ride";
+      events.push({ type: "next", station: legs[i].to, lineId: legs[i].lineId, index: i });
+    } else {
+      const leg = state.plan.legs[state.index], final = state.index === state.plan.legs.length - 1;
+      const event = { type: "arrival", station: leg.to, lineId: leg.lineId, final, index: state.index };
+      state.arrivals.push(event); events.push(event);
+      if (final) { state.status = "finished"; state.phase = "stop"; }
+      else { state.index++; state.phase = "stop"; }
+    }
+    // Expose each departure/arrival boundary so the UI can replace announcements.
+    if (stopAtEvent && events.length) break;
+  }
+  return events;
+}
+function navRideFraction(fraction) {
+  const t = Math.max(0, Math.min(1, Number(fraction) || 0)), a = .24;
+  // Integrate a trapezoidal velocity profile: accelerate, cruise, then brake.
+  if (t < a) return t * t / (2 * a * (1 - a));
+  if (t > 1 - a) return 1 - (1 - t) * (1 - t) / (2 * a * (1 - a));
+  return (t - a / 2) / (1 - a);
+}
+function navPointAt(pts, fraction) {
+  if (!pts || !pts.length) return null;
+  if (pts.length === 1) return { x: pts[0].x, y: pts[0].y, angle: 0 };
+  const lengths = [], f = Math.max(0, Math.min(1, fraction));
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); lengths.push(d); total += d; }
+  let target = f * total;
+  for (let i = 1; i < pts.length; i++) {
+    const d = lengths[i - 1];
+    if (target <= d || i === pts.length - 1) {
+      const a = pts[i - 1], b = pts[i], u = d ? Math.min(1, target / d) : 0;
+      return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, angle: Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI };
+    }
+    target -= d;
+  }
+  return null;
+}
+function navLegPoints(legs, index, geometries) {
+  const leg = legs[index], segments = geometries[leg.lineId] || [], segment = segments[leg.segmentIndex];
+  if (!segment || !segment.pts.length) return [];
+  const pts = segment.pts.map((p) => ({ x: p.x, y: p.y }));
+  if (leg.direction === -1) pts.reverse();
+  const prev = legs[index - 1];
+  /* joinSegs draws a connector between consecutive offset segments, but no
+     connector between different lines or across the unjoined ring seam. */
+  if (prev && prev.lineId === leg.lineId && prev.direction === leg.direction &&
+      prev.toIndex === leg.fromIndex && Math.abs(prev.segmentIndex - leg.segmentIndex) === 1) {
+    const ps = segments[prev.segmentIndex];
+    if (ps && ps.pts.length) {
+      const end = ps.pts[prev.direction === -1 ? 0 : ps.pts.length - 1];
+      if (end.x !== pts[0].x || end.y !== pts[0].y) pts.unshift({ x: end.x, y: end.y });
+    }
+  }
+  return pts;
+}
+// END NAV PLAYBACK
+
+// BEGIN NAV UI
+// BEGIN NAV ANNOUNCEMENTS
+function navEnglishName(item, pinyin, isLine = false) {
+  if (item.nameEn && item.nameEn.trim()) return item.nameEn.trim();
+  const name = String(item.name || "");
+  if (isLine) {
+    const number = name.match(/^(?:地铁\s*)?(\d+)\s*号线$/);
+    if (number) return "Line " + Number(number[1]);
+  }
+  return /[\u3400-\u9fff]/.test(name) && pinyin ? pinyin(name) : name;
+}
+function navInterchangeLines(project, stationId, currentLineId) {
+  const seen = new Set();
+  return project.lines.filter((l) => {
+    if (l.id === currentLineId || seen.has(l.id) || l.visible === false || l.style === "dash") return false;
+    const ids = l.stations || [];
+    const served = ids.some((id, i) => id === stationId &&
+      [ids[i - 1], ids[i + 1], l.loop && i === 0 && ids[ids.length - 1], l.loop && i === ids.length - 1 && ids[0]]
+        .some((next) => next && next !== id && project.stations[next]));
+    if (served) seen.add(l.id);
+    return served;
+  });
+}
+function navAnnouncement(project, event, plan, pinyin) {
+  if (event.type !== "next" && event.type !== "arrival") return null;
+  const s = project.stations[event.station];
+  if (!s) return null;
+  const l = project.lines.find((entry) => entry.id === event.lineId), leg = plan.legs[event.index];
+  const terminus = !!(l && leg && !l.loop && leg.to === event.station &&
+    ((leg.direction === 1 && leg.toIndex === l.stations.length - 1) || (leg.direction === -1 && leg.toIndex === 0)));
+  const transfers = navInterchangeLines(project, s.id, event.lineId);
+  const englishList = (names) => names.length < 2 ? names.join("") : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+  const zhTransfer = transfers.length ? (s.outTransfer ? "可出站换乘" : "可换乘") + transfers.map((entry) => entry.name).join("、") + "。" : "";
+  const enTransfer = transfers.length ? " You can transfer to " + englishList(transfers.map((entry) => navEnglishName(entry, pinyin, true))) +
+    (s.outTransfer ? ". Please exit the station to transfer." : ".") : "";
+  const enName = navEnglishName(s, pinyin);
+  const zh = event.type === "next" ? "下一站，" + s.name + (terminus ? "，本次列车的终点站。" : "。") + zhTransfer :
+    (terminus ? "终点站，" : "") + s.name + "到了。" + zhTransfer +
+      (terminus ? "请所有乘客下车，感谢您乘坐本次列车。" : "下车的乘客，请带齐随身物品。");
+  const en = event.type === "next" ? "The next station is " + enName + (terminus ? ", the terminus of this train." : ".") + enTransfer :
+    "We are now at " + enName + "." + (terminus ? " This is the terminus. All passengers, please leave the train. Thank you for travelling with us." :
+      " Please remember to take all your belongings when leaving the train.") + enTransfer;
+  return { zh, en, terminus, parts: [{ text: zh, lang: "zh-CN" }, { text: en, lang: "en-US" }] };
+}
+function navSelectVoice(voices, lang) {
+  const base = lang.split("-")[0].toLowerCase();
+  return voices.filter((voice) => voice.lang.toLowerCase().split(/[-_]/)[0] === base)
+    .sort((a, b) => Number(b.lang.toLowerCase() === lang.toLowerCase()) - Number(a.lang.toLowerCase() === lang.toLowerCase()) ||
+      Number(!!b.localService) - Number(!!a.localService))[0] || null;
+}
+/* Keep exactly one station's bilingual message. The adapter allows the actual
+   cancellation and delayed native callbacks to be tested without making sound. */
+function createNavSpeaker(adapter, onComplete) {
+  let parts = [], index = 0, token = 0, active = false, paused = false, timer = null;
+  const untimer = () => { if (timer !== null) adapter.unlater(timer); timer = null; };
+  const cancel = () => { token++; untimer(); if (active) { try { adapter.cancel(); } catch (_) {} } active = false; };
+  const play = () => {
+    if (paused || index >= parts.length) return;
+    const part = parts[index], ownToken = ++token;
+    active = true;
+    const finish = (timeout) => {
+      if (ownToken !== token || paused) return;
+      token++; untimer();
+      if (timeout) { try { adapter.cancel(); } catch (_) {} }
+      active = false; index++;
+      if (index < parts.length) play();
+      else { parts = []; index = 0; onComplete(); }
+    };
+    timer = adapter.later(() => finish(true), Math.min(90000, 15000 + part.text.length * 180));
+    try { adapter.speak(part, () => finish(false)); } catch (_) { finish(false); }
+  };
+  return {
+    get busy() { return parts.length > 0; },
+    get paused() { return paused; },
+    speak(message) { cancel(); parts = message.map((part) => ({ ...part })); index = 0; paused = false; play(); },
+    pause() { paused = true; cancel(); },
+    resume() { if (!paused) return; paused = false; play(); },
+    clear() { cancel(); parts = []; index = 0; paused = false; }
+  };
+}
+// END NAV ANNOUNCEMENTS
+let nav = null;
+let navProgrammaticView = false;
+function navGeometry(plan) {
+  const groups = buildCorridorGroups(), geometries = {};
+  plan.legs.forEach((leg) => {
+    if (geometries[leg.lineId]) return;
+    const l = line(leg.lineId);
+    if (l) geometries[l.id] = offsetSegs(lineShapePx(l).segs, groups, l.id);
+  });
+  return plan.legs.map((_, i) => navLegPoints(plan.legs, i, geometries));
+}
+function navClearLayers() {
+  if (!nav) return;
+  if (nav.layer) nav.layer.remove();
+  nav.layer = null; nav.marker = null;
+}
+function navCancelFrame() { if (nav && nav.raf) { cancelAnimationFrame(nav.raf); nav.raf = 0; } }
+function navSilence(keep = false) {
+  if (!nav) return;
+  if (nav.speaker) { if (keep) nav.speaker.pause(); else nav.speaker.clear(); }
+  if (!keep) nav.userSpeechPaused = false;
+  nav.speaking = false; nav.lastTime = null;
+}
+function navResumeSpeech() {
+  if (!nav || !nav.speaker || !nav.speaker.busy || nav.userSpeechPaused || document.hidden || nav.playback.status === "paused") return;
+  nav.speaking = true; nav.speaker.resume();
+}
+function navWaitsForAnnouncement() {
+  return !!(nav && nav.speaker && nav.speaker.busy && nav.announcement && nav.announcement.type === "arrival");
+}
+function navSpeechComplete(owner) {
+  if (nav !== owner) return;
+  nav.speaking = false;
+  if (nav.announcement && nav.announcement.type === "arrival") nav.lastTime = null;
+  navRenderState(); navScheduleFrame();
+}
+function navClose() {
+  if (!nav) return;
+  navCancelFrame(); navSilence(); navClearLayers(); nav = null;
+  const card = $("#navCard"); if (card) { card.hidden = true; card.innerHTML = ""; }
+  $("#tNavigate").classList.remove("is-on");
+}
+function navSuspend() {
+  if (!nav) return null;
+  ["navFrom", "navTo"].forEach((id) => navHideSearch($("#" + id)));
+  navCancelFrame(); navSilence(true); navClearLayers();
+  const saved = nav;
+  saved.content = document.createDocumentFragment();
+  const card = $("#navCard"); while (card.firstChild) saved.content.appendChild(card.firstChild);
+  nav = null; $("#navCard").hidden = true; $("#tNavigate").classList.remove("is-on");
+  return saved;
+}
+function navRestore(saved) {
+  navClose(); if (!saved) return;
+  nav = saved; nav.lastTime = null; nav.raf = 0; nav.speaking = false;
+  $("#navCard").appendChild(saved.content); delete saved.content;
+  $("#navCard").hidden = false; $("#tNavigate").classList.add("is-on");
+  navRefreshGeometry(); navRenderState(); navDrawCursor(true); navResumeSpeech(); navScheduleFrame();
+}
+function navStationOptions() {
+  const ids = new Set();
+  P.lines.forEach((l) => {
+    if (!l.visible || l.style === "dash" || l.stations.length < 2) return;
+    l.stations.forEach((id) => { if (station(id)) ids.add(id); });
+  });
+  return Array.from(ids).map(station).sort((a, b) => a.name.localeCompare(b.name, "zh-CN") || a.id.localeCompare(b.id));
+}
+function navSearchMatches(query, choices) {
+  const parts = String(query || "").trim().toLocaleLowerCase().split(/\s+/).filter((s) => s && s !== "·");
+  return choices.filter((choice) => parts.every((part) => choice.search.toLocaleLowerCase().includes(part)));
+}
+function navHideSearch(input) {
+  if (!input) return;
+  const results = $("#" + input.id + "Results");
+  if (results) results.hidden = true;
+  input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant");
+}
+function navSearchActivate(input, index) {
+  const buttons = Array.from($("#" + input.id + "Results").querySelectorAll('[role="option"]'));
+  if (!buttons.length) { input.removeAttribute("aria-activedescendant"); return; }
+  const at = (index + buttons.length) % buttons.length;
+  buttons.forEach((button, i) => button.setAttribute("aria-selected", String(i === at)));
+  input.setAttribute("aria-activedescendant", buttons[at].id);
+  buttons[at].scrollIntoView({ block: "nearest" });
+}
+function navSearchRender(input) {
+  if (!nav || !input) return;
+  const matches = navSearchMatches(input.value, nav.choices), results = $("#" + input.id + "Results");
+  results.innerHTML = matches.length ? matches.slice(0, 60).map((choice, i) =>
+    '<button type="button" class="nav-result" role="option" tabindex="-1" aria-selected="false" id="' + input.id + 'Option' + i +
+    '" data-station="' + esc(choice.id) + '"><b>' + esc(choice.name) + '</b><small>' + esc(choice.detail) + '</small></button>').join("") +
+    (matches.length > 60 ? '<div class="nav-search-note">还有 ' + (matches.length - 60) + ' 个匹配，请继续输入站名。</div>' : "") :
+    '<div class="nav-search-note" role="status">没有匹配的运营站点</div>';
+  results.hidden = false; input.setAttribute("aria-expanded", "true"); navSearchActivate(input, 0);
+}
+function navChooseStation(fieldId, stationId, replan = true) {
+  if (!nav) return;
+  const input = $("#" + fieldId), choice = nav.choices.find((c) => c.id === stationId);
+  input.value = choice ? choice.label : ""; input.dataset.stationId = choice ? choice.id : "";
+  navHideSearch(input);
+  if (replan) navReplan();
+}
+function navBindSearch(fieldId) {
+  const input = $("#" + fieldId), results = $("#" + fieldId + "Results");
+  let composing = false;
+  input.addEventListener("focus", () => { input.select(); navSearchRender(input); });
+  input.addEventListener("input", () => {
+    input.dataset.stationId = ""; navReplan();
+    if (!composing) navSearchRender(input);
+  });
+  input.addEventListener("compositionstart", () => { composing = true; navHideSearch(input); });
+  input.addEventListener("compositionend", () => { composing = false; navSearchRender(input); });
+  input.addEventListener("blur", () => navHideSearch(input));
+  input.addEventListener("keydown", (e) => {
+    if (composing || e.isComposing || e.keyCode === 229) { if (e.key === "Escape") e.stopPropagation(); return; }
+    if (e.key === "Escape" && !results.hidden) { e.preventDefault(); e.stopPropagation(); navHideSearch(input); return; }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Enter") return;
+    if (results.hidden && e.key === "Enter") return;
+    e.preventDefault(); e.stopPropagation();
+    if (results.hidden) { navSearchRender(input); if (e.key === "ArrowUp") navSearchActivate(input, -1); return; }
+    const buttons = Array.from(results.querySelectorAll('[role="option"]'));
+    const at = buttons.findIndex((b) => b.id === input.getAttribute("aria-activedescendant"));
+    if (e.key === "Enter") { if (buttons[at]) navChooseStation(fieldId, buttons[at].dataset.station); }
+    else navSearchActivate(input, at + (e.key === "ArrowDown" ? 1 : -1));
+  });
+  results.addEventListener("pointerdown", (e) => e.preventDefault());
+  results.addEventListener("click", (e) => {
+    const button = e.target.closest('[data-station]');
+    if (button) navChooseStation(fieldId, button.dataset.station);
+  });
+}
+function openNavigation() {
+  if (nav) { $("#navFrom").focus(); return; }
+  commitViewNow(); setTool("select");
+  const stations = navStationOptions(), active = activeLine();
+  const first = stations.find((s) => s.id === sel.station) || stations.find((s) => active && s.id === active.stations[0]) || stations[0];
+  const lastId = active && active.stations[active.stations.length - 1];
+  const last = stations.find((s) => s.id === lastId && s.id !== (first && first.id)) || stations.find((s) => s.id !== (first && first.id));
+  nav = { projectId: P.id, from: first ? first.id : "", to: last ? last.id : "",
+    preference: "transfers", speed: 1, speechRate: 1, follow: true, voice: false, plan: null, playback: null, raf: 0, lastTime: null, layer: null, marker: null, speaking: false };
+  const nameCounts = new Map(); stations.forEach((s) => nameCounts.set(s.name, (nameCounts.get(s.name) || 0) + 1));
+  nav.choices = stations.map((s) => {
+    const lines = stationLines(s).filter((l) => l.style !== "dash");
+    const badges = lines.map((l) => l.badge || l.name).join(" / "), detail = lines.map((l) => l.name).join(" / ");
+    const sameName = nameCounts.get(s.name) > 1;
+    return { id: s.id, name: s.name, label: s.name + (sameName ? " · " + badges : ""), detail,
+      search: s.name + " " + badges + " " + detail };
+  });
+  const field = (id) => '<div class="nav-picker"><input id="' + id + '" type="search" role="combobox" placeholder="输入站名搜索" autocomplete="off"' +
+    ' aria-autocomplete="list" aria-expanded="false" aria-controls="' + id + 'Results"><div id="' + id + 'Results" class="nav-results" role="listbox" aria-label="匹配车站" hidden></div></div>';
+  const card = $("#navCard");
+  card.innerHTML = '<div class="nav-head"><b>模拟导航</b><button id="navClose" class="x" title="关闭导航（Esc）" aria-label="关闭导航">✕</button></div>' +
+    '<div class="nav-fields"><label for="navFrom">出发站</label>' + field("navFrom") +
+    '<button class="tool" id="navSwap" title="交换起点和终点" aria-label="交换起点和终点">⇄</button>' +
+    '<label for="navTo">到达站</label>' + field("navTo") + '</div>' +
+    '<div class="nav-options"><label>路线 <select id="navPreference"><option value="transfers">少换乘</option><option value="stops">少坐站</option></select></label>' +
+    '<label>车速 <select id="navSpeed"><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>' +
+    '<label>报站语速 <select id="navSpeechRate" aria-label="报站语速" title="中英文共用语速，调整从下一段播报生效"><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>' +
+    '<div id="navSummary" class="nav-summary"></div><div id="navItinerary" class="nav-itinerary"></div>' +
+    '<div id="navLive" class="nav-live" role="status" aria-live="polite"></div><progress id="navProgress" max="1" value="0" aria-label="乘车进度"></progress>' +
+    '<div id="navAnnouncement" class="nav-announcement" hidden><div id="navAnnouncementZh"></div><div id="navAnnouncementEn" lang="en"></div></div>' +
+    '<div class="nav-controls"><button class="btn btn--go" id="navStart">开始模拟</button><button class="btn" id="navPause" disabled>暂停</button><button class="btn" id="navRestart" disabled>重来</button></div>' +
+    '<div class="nav-toggles"><label><input type="checkbox" id="navFollow" checked>跟随列车</label><label><input type="checkbox" id="navVoice">中英报站</label></div>' +
+    '<small class="nav-note">行驶时播下一站，到站切换报站；到站中英播完后发车。</small>';
+  card.hidden = false; $("#tNavigate").classList.add("is-on");
+  navChooseStation("navFrom", nav.from, false); navChooseStation("navTo", nav.to, false);
+  $("#navClose").addEventListener("click", navClose);
+  navBindSearch("navFrom"); navBindSearch("navTo");
+  $("#navPreference").addEventListener("change", navReplan);
+  $("#navSwap").addEventListener("click", () => {
+    const a = $("#navFrom"), b = $("#navTo");
+    const text = a.value, id = a.dataset.stationId;
+    a.value = b.value; a.dataset.stationId = b.dataset.stationId; b.value = text; b.dataset.stationId = id;
+    navHideSearch(a); navHideSearch(b); navReplan();
+  });
+  $("#navSpeed").addEventListener("change", () => { navAdvanceClock(performance.now()); if (nav) nav.speed = Number($("#navSpeed").value); });
+  $("#navSpeechRate").addEventListener("change", () => { nav.speechRate = Number($("#navSpeechRate").value) || 1; });
+  $("#navFollow").addEventListener("change", () => { nav.follow = $("#navFollow").checked; if (nav.follow) navDrawCursor(true); });
+  $("#navVoice").addEventListener("change", () => {
+    nav.voice = $("#navVoice").checked;
+    if (!nav.voice) { navSilence(); navScheduleFrame(); }
+    else if (nav.announcement) { navAnnounce(nav.announcement); if (nav.playback.status === "paused") navSilence(true); }
+    navRenderState();
+  });
+  $("#navStart").addEventListener("click", navStart);
+  $("#navRestart").addEventListener("click", navStart);
+  $("#navPause").addEventListener("click", navTogglePause);
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) { $("#navVoice").disabled = true; $("#navSpeechRate").disabled = true; $("#navVoice").parentElement.title = "此浏览器不支持语音报站，文字提示仍可使用"; }
+  navReplan();
+}
+function navReplan() {
+  if (!nav) return;
+  navCancelFrame(); navSilence(); navClearLayers(); nav.playback = null; nav.lastTime = null; nav.announcement = null;
+  $("#navAnnouncement").hidden = true;
+  const selected = (id) => { const input = $("#" + id), choice = nav.choices.find((c) => c.id === input.dataset.stationId); return choice && choice.label === input.value ? choice.id : ""; };
+  nav.from = selected("navFrom"); nav.to = selected("navTo"); nav.preference = $("#navPreference").value;
+  nav.plan = nav.from && nav.to ? planRide(P, nav.from, nav.to, nav.preference) : null;
+  const plan = nav.plan;
+  $("#navSummary").textContent = plan ? (plan.ok ? (plan.stops ? plan.stops + " 站 · " + plan.transfers + " 次换乘" : plan.reason) : plan.reason) :
+    (nav.choices.length < 2 ? "先连接至少两个站，并设为可见的运营线路。" : "搜索站名并从候选中选择出发站和到达站。");
+  const trips = [];
+  if (plan && plan.ok) plan.legs.forEach((leg) => {
+    const last = trips[trips.length - 1];
+    if (last && last.lineId === leg.lineId) { last.to = leg.to; last.count++; }
+    else trips.push({ lineId: leg.lineId, from: leg.from, to: leg.to, count: 1 });
+  });
+  $("#navItinerary").innerHTML = trips.map((trip, i) => {
+    const l = line(trip.lineId);
+    return '<div class="nav-trip"><i style="background:' + esc(l.color) + '"></i><span><b>' + esc(l.name) + '</b> · ' + trip.count + ' 站<br>' +
+      esc((i ? "换乘 · " : "上车 · ") + station(trip.from).name + " → " + station(trip.to).name) + '</span></div>';
+  }).join("");
+  navRefreshGeometry(); navRenderState();
+}
+function navRefreshGeometry() {
+  if (!nav || !nav.plan || !nav.plan.ok || !nav.plan.legs.length || nav.projectId !== P.id) return;
+  const paths = navGeometry(nav.plan);
+  if (paths.some((pts) => pts.length < 2)) { navClose(); return; }
+  nav.geoZoom = map.getZoom();
+  nav.points = paths.map((pts) => pts.map((p) => map.project(map.containerPointToLatLng(p), nav.geoZoom)));
+  const ll = nav.points.map((pts) => pts.map((p) => map.unproject(p, nav.geoZoom)));
+  navClearLayers(); nav.layer = L.layerGroup().addTo(map);
+  ll.forEach((pts) => L.polyline(pts, { color: "#FFCB70", weight: 13, opacity: .3, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(nav.layer));
+  if (nav.playback) navDrawCursor(false);
+}
+function navStart() {
+  if (!nav || !nav.plan || !nav.plan.ok) return;
+  commitViewNow(); navCancelFrame(); navSilence();
+  const durations = nav.plan.legs.map((leg) => {
+    const a = station(leg.from), b = station(leg.to);
+    return clamp(map.distance([a.lat, a.lng], [b.lat, b.lng]) / 700, 2, 7);
+  });
+  nav.playback = createNavPlayback(nav.plan, durations); nav.lastTime = null; nav.announcement = null;
+  $("#navAnnouncement").hidden = true;
+  navRefreshGeometry();
+  if (!nav) return;
+  navRenderState(); navDrawCursor(true); navScheduleFrame();
+}
+function navTogglePause() {
+  if (!nav || !nav.playback) return;
+  navAdvanceClock(performance.now());
+  if (nav.playback.status === "finished") {
+    if (nav.speaker && nav.speaker.busy) {
+      if (nav.speaker.paused) { nav.userSpeechPaused = false; navResumeSpeech(); }
+      else { nav.userSpeechPaused = true; navSilence(true); }
+    }
+    navRenderState(); return;
+  }
+  if (nav.playback.status === "running") { nav.playback.status = "paused"; navCancelFrame(); navSilence(true); }
+  else if (nav.playback.status === "paused") { nav.playback.status = "running"; nav.lastTime = null; navResumeSpeech(); navScheduleFrame(); }
+  navRenderState();
+}
+function navAdvanceClock(now) {
+  if (!nav || !nav.playback || nav.playback.status !== "running") return;
+  if (navWaitsForAnnouncement()) { nav.lastTime = null; return; }
+  const dt = nav.lastTime === null ? 0 : Math.max(0, (now - nav.lastTime) / 1000) * nav.speed;
+  nav.lastTime = now;
+  const voiceEnabled = nav.voice && !inSelfTest && !!window.speechSynthesis && !!window.SpeechSynthesisUtterance;
+  const events = advanceNavPlayback(nav.playback, dt, voiceEnabled);
+  events.forEach(navAnnounce);
+  navDrawCursor(true);
+  if (events.length || nav.lastPhase !== nav.playback.phase) { nav.lastPhase = nav.playback.phase; navRenderState(); }
+  else navUpdateProgress();
+}
+function navScheduleFrame() {
+  if (!nav || !nav.playback || nav.playback.status !== "running" || nav.raf || document.hidden || navWaitsForAnnouncement()) return;
+  nav.raf = requestAnimationFrame((now) => { if (!nav) return; nav.raf = 0; navAdvanceClock(now); navScheduleFrame(); });
+}
+function navDrawCursor(follow) {
+  if (!nav || !nav.playback || !nav.points || !nav.points.length) return;
+  const state = nav.playback, index = state.index;
+  const f = state.status === "finished" ? 1 : state.phase === "ride" ? navRideFraction(state.elapsed / state.durations[index]) : 0;
+  const p = navPointAt(nav.points[index], f), ll = map.unproject(p, nav.geoZoom);
+  if (!nav.marker) nav.marker = L.marker(ll, { interactive: false, keyboard: false, zIndexOffset: 1000,
+    icon: L.divIcon({ className: "nav-train-wrap", html: '<div class="nav-train" role="img" aria-label="模拟列车">➤</div>', iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(nav.layer);
+  else nav.marker.setLatLng(ll);
+  const el = nav.marker.getElement();
+  if (el) el.firstElementChild.style.transform = "rotate(" + p.angle + "deg)";
+  if (follow && nav.follow && !inSelfTest) navFollowPoint(ll);
+}
+function navFollowPoint(ll) {
+  const size = map.getSize(), point = map.latLngToContainerPoint(ll);
+  const card = $("#navCard"), clearHeight = Math.max(60, size.y - card.offsetHeight - 32);
+  const targetY = Math.max(35, clearHeight * .5);
+  if (point.x > size.x * .2 && point.x < size.x * .8 && point.y > 30 && point.y < clearHeight - 10) return;
+  navProgrammaticView = true; userViewAt = -Infinity;
+  try { map.panBy([point.x - size.x * .5, point.y - targetY], { animate: false }); } finally { navProgrammaticView = false; }
+}
+function navUpdateProgress() {
+  if (!nav || !nav.playback) { $("#navProgress").value = 0; return; }
+  const s = nav.playback;
+  $("#navProgress").value = s.status === "finished" ? 1 : (s.index + (s.phase === "ride" ? navRideFraction(s.elapsed / s.durations[s.index]) : 0)) / s.plan.legs.length;
+}
+function navRenderState() {
+  if (!nav) return;
+  const state = nav.playback, plan = nav.plan, ready = plan && plan.ok;
+  $("#navStart").disabled = !ready || !!state;
+  $("#navRestart").disabled = !state;
+  const speechBusy = nav.speaker && nav.speaker.busy;
+  const paused = state && (state.status === "paused" || (speechBusy && nav.speaker.paused));
+  $("#navPause").disabled = !state || (state.status === "finished" && !speechBusy);
+  $("#navPause").textContent = paused ? "继续" : "暂停";
+  let text = "路线已就绪，点击开始模拟。";
+  if (!ready) text = "";
+  else if (state) {
+    const leg = plan.legs[state.index];
+    if (state.status === "finished") text = "已到达目的地 · " + station(plan.to).name;
+    else if (state.phase === "stop") {
+      const transfer = state.index > 0 && plan.legs[state.index - 1].lineId !== leg.lineId;
+      text = (transfer ? "到站换乘 · " : state.index ? "到站 · " : "上车 · ") + station(leg.from).name + (transfer ? " · " + line(leg.lineId).name : "");
+    } else text = line(leg.lineId).name + " · 下一站 " + station(leg.to).name;
+    if (paused) text = "已暂停 · " + text;
+  }
+  $("#navLive").textContent = text;
+  $("#navLive").dataset.state = state ? state.status : "ready";
+  navUpdateProgress();
+}
+function navAnnounce(event) {
+  if (!nav) return;
+  const pinyin = window.pinyinPro && ((text) => window.pinyinPro.pinyin(text, { toneType: "none" })
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase()));
+  const message = navAnnouncement(P, event, nav.plan, pinyin);
+  if (!message) return;
+  nav.announcement = event;
+  $("#navAnnouncement").hidden = false;
+  $("#navAnnouncementZh").textContent = message.zh;
+  $("#navAnnouncementEn").textContent = message.en;
+  if (nav.voice && !inSelfTest && window.speechSynthesis && window.SpeechSynthesisUtterance) {
+    const owner = nav;
+    if (!nav.speaker) nav.speaker = createNavSpeaker({
+      speak(part, finish) {
+        const speech = new window.SpeechSynthesisUtterance(part.text); speech.lang = part.lang; speech.rate = .95 * owner.speechRate;
+        const voice = navSelectVoice(window.speechSynthesis.getVoices(), part.lang);
+        if (voice) speech.voice = voice;
+        owner.utterance = speech;
+        speech.onend = speech.onerror = () => { if (owner.utterance === speech) owner.utterance = null; finish(); };
+        window.speechSynthesis.speak(speech);
+      },
+      cancel() { try { window.speechSynthesis.cancel(); } finally { owner.utterance = null; } },
+      later(callback, delay) { return window.setTimeout(callback, Math.ceil(delay / Math.min(1, owner.speechRate))); },
+      unlater(timer) { window.clearTimeout(timer); }
+    }, () => navSpeechComplete(owner));
+    nav.speaking = true; nav.speaker.speak(message.parts);
+  }
+}
+function navBindMap() {
+  map.on("resize", () => { navRefreshGeometry(); navDrawCursor(true); });
+  map.on("dragstart", () => { if (nav && nav.follow && !navProgrammaticView) { nav.follow = false; $("#navFollow").checked = false; } });
+  document.addEventListener("visibilitychange", () => {
+    if (!nav) return;
+    navCancelFrame(); nav.lastTime = null;
+    if (document.hidden) navSilence(true); else { navResumeSpeech(); navScheduleFrame(); }
+  });
+}
+// END NAV UI
+
 /* ============================================================
    9. 地图渲染
    ============================================================ */
@@ -3284,7 +4008,10 @@ function collectVisible(index) {
   const pr = pxOn ? projectPx : (st) => map.latLngToContainerPoint([st.lat, st.lng]);
   Object.values(P.stations).forEach((st) => {
     const e = bySt.get(st.id);
-    if (!e) return;
+    if (!e) {
+      if (!st.lines.length) vis.push({ st, c: "#8892A0", xfer: false, term: false, staged: false, free: true, size: 14, px: pr(st) });
+      return;
+    }
     const ls = e.ls;
     if (!ls.length) return;
     const g = stationGlyph(st, ls, e.at);
@@ -3622,7 +4349,7 @@ function clearMarkerPools() {
 }
 function pinClass(v, st) {
   return "pin" + (v.xfer ? " pin--x" : "") + (v.term && !v.xfer ? " pin--t" : "") + (v.staged ? " pin--staged" : "") +
-    (v.xfer && st.outTransfer ? " pin--out" : "") + (sel.station === st.id ? " pin--sel" : "");
+    (v.xfer && st.outTransfer ? " pin--out" : "") + (v.free ? " pin--free" : "") + (sel.station === st.id ? " pin--sel" : "");
 }
 function pinHtml(v, cls) {
   return '<span class="' + cls + '" style="width:' + v.size + 'px;height:' + v.size + 'px;font-size:' + Math.round(v.size * .5) + 'px">' + (v.xfer ? "⇄" : "") + "</span>";
@@ -3631,7 +4358,11 @@ function pinHtml(v, cls) {
    P.stations 里的对象，导入同一份 JSON 两次还会得到同名 id —— 闭包绑对象的话
    拖拽就改到了上一批的孤儿数据上，图上看着没反应。（铭牌早就是这么写的。） */
 function bindStationDrag(mk, id) {
-  mk.on("click", (e) => { L.DomEvent.stopPropagation(e); if (tool === "link") { linkPush(id); return; } selectStation(id); });
+  bindLinkPointer(mk, id);
+  mk.on("click", (e) => { L.DomEvent.stopPropagation(e);
+    if (tool === "link" && (linkMode === "connect" || performance.now() < linkSuppressClickUntil)) return;
+    selectStation(id);
+  });
   mk.on("dragstart", () => { pushHistory(); startDragProbe(); mk._icon && mk._icon.classList.add("pin--drag"); });
   mk.on("drag", () => {
     const st = station(id); if (!st) return;
@@ -3656,7 +4387,7 @@ function bindStationDrag(mk, id) {
 }
 function renderStations(vis) {
   const alive = {};
-  const draggable = tool === "select";
+  const draggable = tool === "select" || (tool === "link" && linkMode === "place");
   vis.forEach((v) => {
     const st = v.st, size = v.size;
     alive[st.id] = 1;
@@ -3668,7 +4399,7 @@ function renderStations(vis) {
        等价性由自检的"池化 vs 强制重建 #map 整层逐字节相同"与三种选中状态的对测盯着。 */
     let mk = stnPool[st.id];
     const mask = (v.xfer ? 1 : 0) | (v.term && !v.xfer ? 2 : 0) | (v.staged ? 4 : 0) |
-      (v.xfer && st.outTransfer ? 8 : 0) | (sel.station === st.id ? 16 : 0);
+      (v.xfer && st.outTransfer ? 8 : 0) | (sel.station === st.id ? 16 : 0) | (v.free ? 32 : 0);
     if (mk && (String(mk._stnDrag) !== String(draggable) || mk.options.zIndexOffset !== (v.xfer ? 500 : 200))) {
       if (mk._dragging) return;                        // 正被拖着：这一帧原样留着，工具切换等拖完再生效
       dropStation(mk); delete stnPool[st.id]; delete stnSig[st.id]; mk = null;
@@ -3845,12 +4576,15 @@ function renderMap() {
   renderGhost();
   renderStations(vis);
   renderLabels(vis);
+  map.getContainer().classList.toggle("is-link-connect", tool === "link" && linkMode === "connect");
+  renderLinkPreview();
+  navRefreshGeometry();
 }
 
 /* ============================================================
    10. 面板渲染
    ============================================================ */
-function renderAll() { renderMap(); renderPanels(); updateHistoryButtons(); }
+function renderAll() { renderMap(); renderPanels(); renderLinkBar(); updateHistoryButtons(); }
 
 function fillBasemapSelect() {
   const sel2 = $("#basemapSel");
@@ -3995,10 +4729,10 @@ function renderStatus() {  $("#sTool").textContent = tool === "add" ? (pendingIn
   const hints = {
     select: pendingInsert ? "点击地图插入位置 —— 第 " + (pendingInsert.index + 1) + " 站之后" : tool === "link" ? "连线：点击地图落站 / 点击已有站复用，攒够了一段再点「并入」或「新建线路」" : "点击选线 / 选站，拖动圆点改位置，右侧列表拖行改站序，滚轮缩放地图",
     add: pendingInsert ? "点击地图插入车站（第 " + (pendingInsert.index + 1) + " 站之后）" : "在地图上依次点击生成车站；靠近已有车站会自动转为换乘站",
-    link: "连线模式：点地图落新站、点已有站复用（会成换乘站）；再点一次链尾那个站是撤回这一步"
+    link: linkMode === "place" ? "布置车站：点空白处放站，拖动圆点改位置；准备好后点「拖线连接」" : "拖线连接：从车站圆点按住拖到另一站，松开吸附；连接确认后保存，Ctrl+Z 撤一步"
   };
   $("#sHint").textContent = hints[tool];
-  $("#modeText").textContent = tool === "add" ? (pendingInsert ? "插入车站" : "加站模式") : "选择 / 编辑";
+  $("#modeText").textContent = tool === "add" ? (pendingInsert ? "插入车站" : "加站模式") : tool === "link" ? (linkMode === "place" ? "布置车站" : "拖线连接") : "选择 / 编辑";
   $("#inspTag").textContent = sel.station ? "车站" : sel.line ? "线路" : "图纸";
 }
 /* ============================================================
@@ -4059,6 +4793,7 @@ function inspLine(l) {
   const idx = P.lines.indexOf(l);
   return '<div class="insp-sec"><h4>线路属性<em></em><span style="color:' + l.color + '">●</span></h4>' +
     '<div class="field"><label>名称</label><input type="text" data-k="name" data-t="line" value="' + esc(l.name) + '" placeholder="如 1 号线 / 滨江线"></div>' +
+    '<div class="field"><label>英文报站</label><input type="text" data-k="nameEn" data-t="line" value="' + esc(l.nameEn || "") + '" maxlength="120" aria-label="英文/拼音（报站）" title="英文/拼音（报站）；留空时数字线路自动使用 Line N，其他名称使用拼音" placeholder="英文 / 拼音；留空自动识别"></div>' +
     '<div class="field"><label>编号</label><input type="text" data-k="badge" data-t="line" value="' + esc(l.badge) + '" maxlength="4" placeholder="留空则跟随线路名"></div>' +
     '<div class="field"><label>颜色</label><input type="color" data-k="color" data-t="line" value="' + l.color + '"><input type="text" data-k="colorhex" data-t="line" value="' + l.color + '" style="font-family:var(--font-mono);font-size:11px"></div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 2px">' +
@@ -4109,6 +4844,7 @@ function inspStation(st) {
   const ls = stationLines(st, false);      // 面板里连隐藏的线也要列出来，onlyVisible=false
   return '<div class="insp-sec"><h4>车站<em></em>' + (st.lines.length > 1 ? '<span style="color:var(--signal)">换乘站</span>' : "") + "</h4>" +
     '<div class="field"><label>站名</label><input type="text" data-k="name" data-t="stn" value="' + esc(st.name) + '"></div>' +
+    '<div class="field"><label>英文报站</label><input type="text" data-k="nameEn" data-t="stn" value="' + esc(st.nameEn || "") + '" maxlength="120" aria-label="英文/拼音（报站）" title="英文/拼音（报站）；留空时按站名拼音播报，可在此填写正式英文名称" placeholder="英文 / 拼音；留空使用站名拼音"></div>' +
     '<div class="field"><label>经度</label><input type="number" step="0.000001" data-k="lng" data-t="stn" value="' + st.lng.toFixed(6) + '"></div>' +
     '<div class="field"><label>纬度</label><input type="number" step="0.000001" data-k="lat" data-t="stn" value="' + st.lat.toFixed(6) + '"></div>' +
     '<div class="field"><label>特征</label><div class="seg">' +
@@ -4176,7 +4912,7 @@ function setLineField(l, k, v, el, isChange) {
   /* 应用内输入一律先裁到位：用户永远造不出"导入会被拒"的那种数据。
      只把裁好的值写回这个输入框（不重画整个检查器，否则打字中途焦点会被抢走）；
      提示只在 change（失焦）时给一次，避免每敲一个字弹一条。 */
-  if (k === "name" || k === "badge") {
+  if (k === "name" || k === "nameEn" || k === "badge") {
     const c = clipText(k, v);
     if (c.changed) {
       v = c.value;
@@ -4194,25 +4930,27 @@ function setLineField(l, k, v, el, isChange) {
   else if (k === "color2hex") { if (/^#[0-9a-fA-F]{6}$/.test(v)) l.color2 = v; else { hist.pop(); updateHistoryButtons(); return; } }
   else if (k === "stack") l.stack = !!v;
   else if (k === "name") syncBadgeOnRename(l, v, P.lines.indexOf(l));
+  else if (k === "nameEn") { if (String(v).trim()) l.nameEn = v; else delete l.nameEn; }
   else if (k === "badge") l.badge = String(v).trim() ? v : autoBadge(l.name, P.lines.indexOf(l));
   else l[k] = v;
-  renderMap(); renderLineList(); renderLegend(); renderStatus(); markDirty();
+  renderMap(); renderLineList(); renderLegend(); renderStatus(); renderLinkBar(); markDirty();
 }
 function setStnField(st, k, v, el, isChange) {
-  if (k === "name" || k === "note") {
+  if (k === "name" || k === "nameEn" || k === "note") {
     const c = clipText(k, v);
     if (c.changed) {
       v = c.value;
       if (el) el.value = v;
-      if (isChange) toast((k === "name" ? "站名" : "备注") + c.why + "（上限 " + TEXT_LIMITS[k] + " 字）", "bad");
+      if (isChange) toast((k === "name" ? "站名" : k === "nameEn" ? "英文报站名" : "备注") + c.why + "（上限 " + TEXT_LIMITS[k] + " 字）", "bad");
     }
   }
   pushHistory();
   if (k === "lat") st.lat = clamp(parseFloat(v) || st.lat, -89.9999, 89.9999);
   else if (k === "lng") st.lng = clamp(parseFloat(v) || st.lng, -179.9999, 179.9999);
   else if (k === "name") st.name = v;
+  else if (k === "nameEn") { if (String(v).trim()) st.nameEn = v; else delete st.nameEn; }
   else st[k] = v;
-  renderMap(); renderStnList(); renderStatus(); markDirty();
+  renderMap(); renderStnList(); renderStatus(); renderLinkBar(); markDirty();
 }
 function toggleAttach(lid, on) {
   const st = station(sel.station), l = line(lid);
@@ -4264,7 +5002,7 @@ function pruneOrphans() {
   Object.keys(P.stations).forEach((id) => {
     const st = P.stations[id];
     st.lines = revIds.get(id) || [];
-    if (!st.lines.length) delete P.stations[id];
+    if (!st.lines.length && !st.placed) delete P.stations[id];
   });
 }
 /* 含隐藏线版本的倒排，normalize / pruneOrphans 都用它，口径与
@@ -4465,65 +5203,341 @@ function onMapClick(e) {
   addStationAt(e.latlng);
 }
 /* ============================================================
-   13.2 连线：先把站点定在地图上，再按点击顺序把它们串成线路
-   ------------------------------------------------------------
-   链里既可以是新落的站，也可以是已有的站（点到已有站 = 复用并顺势成换乘站）。
-   提交有两条路：并进当前线路（从链首那个"不在线上的站"开始续），或者另起一条新线。
-   刻意不自动提交：人往往是点七八个站之后才发现点错了一个，中间每一步都不该改数据。 */
-let linkChain = [], linkLayer = null, linkColor = "#8892A0";
+   13.2 连线：先布置站点，再从车站圆点拖线连接
+   ============================================================ */
+/* Plan one continuous connection without mutating the line or filtering away the
+   user's existing stations. Existing portions must follow the line's actual
+   order; multiple possible insertion results are deliberately rejected. */
+function planLinkAppend(l, chainIds) {
+  const fail = (reason) => ({ ok: false, reason, at: null, ids: [], loop: !!(l && l.loop) });
+  if (!l || !Array.isArray(l.stations) || !Array.isArray(chainIds)) return fail("线路或连接路径无效");
+  const isId = (id) => typeof id === "string" && id.trim().length > 0;
+  if (!l.stations.every(isId) || !chainIds.every(isId)) return fail("连接路径中有无效的车站");
+  if (chainIds.length < 2) return fail("至少连接两个车站");
+  const old = l.stations, n = old.length, ring = !!l.loop;
+  if (!n) return fail("当前线路还没有车站，请新建线路");
+  if (ring && n < 3) return fail("当前环线的站序无效，请先断开环线");
+  if (chainIds.some((id, i) => i > 0 && id === chainIds[i - 1])) return fail("相邻的连接点不能是同一个车站");
+  const present = new Set(old);
+  const runs = [];
+  for (let i = 0; i < chainIds.length; i++) {
+    if (present.has(chainIds[i])) continue;
+    const start = i;
+    while (i + 1 < chainIds.length && !present.has(chainIds[i + 1])) i++;
+    runs.push({ start, end: i });
+  }
+  if (runs.length > 1) return fail("一次只能延长一个端点或插入一段，请分段连接");
+  if (runs.length === 1 && runs[0].start === 0 && runs[0].end === chainIds.length - 1) {
+    return fail("连接路径没有当前线路上的车站，请新建线路");
+  }
+  /* Every matching occurrence matters: indexOf silently chooses the wrong B in
+     A-B-C-B-D. A longer continuous path can disambiguate it safely. */
+  const matches = (path) => {
+    const out = [];
+    for (let start = 0; start < n; start++) {
+      if (old[start] !== path[0]) continue;
+      const dirs = path.length === 1 ? [0] : [1, -1];
+      dirs.forEach((dir) => {
+        let end = start, good = true;
+        for (let i = 1; i < path.length; i++) {
+          end += dir;
+          if (ring) end = (end + n) % n;
+          if (end < 0 || end >= n || old[end] !== path[i]) { good = false; break; }
+        }
+        if (good) out.push({ start, end, dir });
+      });
+    }
+    return out;
+  };
+  const candidates = new Map();
+  const offer = (at, ids, loop) => {
+    const plan = { ok: true, reason: "", at, ids: ids.slice(), loop: !!loop };
+    candidates.set(JSON.stringify([at, plan.ids, plan.loop]), plan);
+  };
+  const agrees = (match, dir) => match.dir === 0 || match.dir === dir;
+  const existingIds = chainIds.filter((id) => present.has(id));
+  const hasRepeatedAnchor = existingIds.some((id) => old.indexOf(id) !== old.lastIndexOf(id));
+  if (!runs.length) {
+    if (ring) return fail("这些车站已经由当前环线连接");
+    /* With no new station, only a valid traversal of the missing terminal edge
+       changes anything. Walking an existing segment is a harmless no-op. */
+    if (n >= 3) {
+      for (let start = 0; start < n; start++) {
+        if (old[start] !== chainIds[0]) continue;
+        [1, -1].forEach((dir) => {
+          let at = start, bridges = 0, good = true;
+          for (let i = 1; i < chainIds.length; i++) {
+            const next = at + dir;
+            if (next < 0 || next >= n) bridges++;
+            at = (next + n) % n;
+            if (old[at] !== chainIds[i] || bridges > 1) { good = false; break; }
+          }
+          if (good && bridges === 1) offer(n, [], true);
+        });
+      }
+    }
+    if (!candidates.size) {
+      if (matches(chainIds).length) return fail("这些车站已经由当前线路连接");
+      return fail("已有站必须沿当前线路连续连接；闭环请连接线路首尾");
+    }
+  } else {
+    const run = runs[0], fresh = chainIds.slice(run.start, run.end + 1);
+    const before = chainIds.slice(0, run.start), after = chainIds.slice(run.end + 1);
+    if (!before.length || !after.length) {
+      if (ring) return fail("环线没有端点；插站时请连接两个相邻站，支线请新建线路");
+      const path = before.length ? before : after;
+      const found = matches(path);
+      found.forEach((m) => {
+        const anchor = before.length ? m.end : m.start;
+        if (n === 1) offer(before.length ? n : 0, fresh, false);
+        else if (anchor === 0) offer(0, before.length ? fresh.slice().reverse() : fresh, false);
+        else if (anchor === n - 1) offer(n, before.length ? fresh : fresh.slice().reverse(), false);
+      });
+      if (!candidates.size) {
+        if (!found.length) return fail("点击的已有站没有沿当前线路连续连接");
+        return fail(hasRepeatedAnchor ? "这个车站在站序中出现多次，连接位置不明确；请连接相邻站来确定位置" :
+          "中间站不能直接延长；插站请连接相邻的另一个站，支线请新建线路");
+      }
+    } else {
+      const left = matches(before), right = matches(after);
+      left.forEach((a) => right.forEach((b) => {
+        const from = a.end, to = b.start;
+        let dir = 0, at = null, loop = ring;
+        if (to === from + 1) { dir = 1; at = to; }
+        else if (to === from - 1) { dir = -1; at = from; }
+        else if ((ring || n >= 3) && from === n - 1 && to === 0) { dir = 1; at = n; loop = true; }
+        else if ((ring || n >= 3) && from === 0 && to === n - 1) { dir = -1; at = n; loop = true; }
+        if (dir && agrees(a, dir) && agrees(b, dir)) offer(at, dir === 1 ? fresh : fresh.slice().reverse(), loop);
+      }));
+      if (!candidates.size) {
+        if (!left.length || !right.length) return fail("点击的已有站没有沿当前线路连续连接");
+        return fail(hasRepeatedAnchor ? "重复车站的连接位置不明确；请沿站序连接相邻站" :
+          "插站只能连接当前线路的相邻站；闭环请连接线路首尾，跨站连接请新建线路");
+      }
+    }
+  }
+  if (candidates.size !== 1) return fail("这个车站在站序中出现多次，连接位置不明确；请沿站序补连相邻站");
+  return candidates.values().next().value;
+}
+/* 放站是正式操作；拖线只构造连接草稿，确认后统一提交。 */
+let linkChain = [], linkClosed = false, linkMode = "place", linkSteps = [];
+let linkLayer = null, linkColor = "#FFB020", linkDrag = null, linkSuppressClickUntil = 0;
 function linkReset() {
-  linkChain = [];
-  if (linkLayer) { linkLayer.clearLayers(); }
+  linkCancelDrag();
+  linkChain = []; linkClosed = false; linkSteps = [];
+  if (linkLayer) linkLayer.clearLayers();
   renderLinkBar();
 }
-function linkHas(id) { return linkChain.indexOf(id) >= 0; }
+function linkHas(id) { return linkChain.includes(id); }
 function linkPush(id) {
-  const st = station(id); if (!st) return;
-  if (linkChain.length && linkChain[linkChain.length - 1] === id) { linkChain.pop(); renderLinkBar(); renderLinkPreview(); return; }
-  if (linkHas(id)) { toast("「" + st.name + "」已经在这一段里了（一条线不能重复经过同一站）", "bad"); return; }
-  linkChain.push(id);
+  if (!station(id) || linkClosed) return false;
+  if (linkChain[linkChain.length - 1] === id) return false;
+  const before = { chain: linkChain.length < 2 ? [] : linkChain.slice(), closed: linkClosed };
+  if (linkHas(id)) {
+    if (id === linkChain[0] && linkChain.length >= 3) linkClosed = true;
+    else { toast("该站已在连接中；从两端继续拖线，或撤一步", "bad"); return false; }
+  } else linkChain.push(id);
+  if (linkChain.length >= 2) linkSteps.push(before);
   renderLinkBar(); renderLinkPreview();
+  return true;
+}
+function linkSetMode(mode) {
+  if (mode !== "place" && mode !== "connect") return;
+  linkCancelDrag(); linkMode = mode;
+  renderAll();
 }
 function linkAddPoint(latlng) {
+  if (performance.now() < linkSuppressClickUntil) return false;
+  if (linkMode !== "place") {
+    toast("从车站圆点按住拖到另一站；需要新站时切到「布置车站」");
+    return false;
+  }
   const near = findNearStation(latlng, null, true);
-  if (near) { linkPush(near.id); return; }
-  const id = uid("s_");
+  if (near) { selectStation(near.id); return false; }
   pushHistory();
-  P.stations[id] = { id, name: "车站 " + (Object.keys(P.stations).length + 1), lat: latlng.lat, lng: latlng.lng, lines: [], note: "" };
+  const id = uid("s_");
+  P.stations[id] = { id, name: "车站 " + (Object.keys(P.stations).length + 1),
+    lat: latlng.lat, lng: latlng.lng, lines: [], note: "", placed: true };
+  sel.station = id;
   renderAll(); markDirty();
-  linkPush(id);
+  return id;
 }
-function linkAnchorIndex(l) {
-  const i = l.stations.indexOf(linkChain[0]);
-  if (i >= 0) return i;
-  const j = linkChain.length > 1 ? l.stations.indexOf(linkChain[1]) : -1;
-  return j >= 0 ? j - 1 : -1;
+/* 明确拖向车站的吸附不受「加站时自动合并」设置影响，隐藏线路上的站不命中。 */
+function linkFindTarget(latlng, excludeId) {
+  if (!latlng) return null;
+  const p = map.latLngToContainerPoint(latlng);
+  let best = null, distance = Math.max(18, settings.mergePx || 24);
+  Object.values(P.stations).forEach((st) => {
+    if (st.id === excludeId || (st.lines.length && !st.lines.some((id) => { const l = line(id); return l && l.visible; }))) return;
+    const q = map.latLngToContainerPoint([st.lat, st.lng]);
+    const d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (d < distance) { distance = d; best = st; }
+  });
+  return best;
+}
+function linkBeginDrag(id, latlng) {
+  if (tool !== "link" || linkMode !== "connect" || !station(id)) return false;
+  if (linkClosed) { toast("连接已闭合，请确认或撤一步后继续"); return false; }
+  if (linkChain.length && id !== linkChain[0] && id !== linkChain[linkChain.length - 1]) {
+    toast("请从连接的首站或末站继续拖线；支线可另建线路", "bad"); return false;
+  }
+  linkCancelDrag();
+  linkDrag = { from: id, latlng: latlng || L.latLng(station(id).lat, station(id).lng),
+    target: null, pan: map.dragging.enabled() };
+  map.dragging.disable();
+  renderLinkPreview();
+  return true;
+}
+function linkMoveDrag(latlng) {
+  if (!linkDrag) return;
+  linkDrag.latlng = latlng;
+  const st = linkFindTarget(latlng, linkDrag.from);
+  linkDrag.target = st ? st.id : null;
+  renderLinkPreview();
+}
+function linkCancelDrag() {
+  document.removeEventListener("pointermove", linkPointerMove);
+  document.removeEventListener("pointerup", linkPointerUp);
+  document.removeEventListener("pointercancel", linkPointerCancel);
+  window.removeEventListener("blur", linkPointerCancel);
+  const drag = linkDrag;
+  linkDrag = null;
+  if (drag && drag.pan) map.dragging.enable();
+}
+function linkEndDrag(latlng) {
+  if (!linkDrag) return false;
+  const from = linkDrag.from, target = linkFindTarget(latlng, from);
+  const before = { chain: linkChain.slice(), closed: linkClosed };
+  linkCancelDrag();
+  let ok = false;
+  if (target) {
+    if (!linkChain.length) { linkChain = [from, target.id]; ok = true; }
+    else {
+      const atHead = from === linkChain[0], other = atHead ? linkChain[linkChain.length - 1] : linkChain[0];
+      if (linkHas(target.id)) {
+        if (target.id === other && linkChain.length >= 3) { linkClosed = true; ok = true; }
+        else toast("这条连接已包含该站；闭合环线至少需要三个站", "bad");
+      } else if (atHead) { linkChain.unshift(target.id); ok = true; }
+      else { linkChain.push(target.id); ok = true; }
+    }
+  } else toast("松开时没有接到车站，本次拖线已取消");
+  if (ok) linkSteps.push(before);
+  linkSuppressClickUntil = performance.now() + 300;
+  renderLinkBar(); renderLinkPreview();
+  return ok;
+}
+function linkPointerMove(e) {
+  if (!linkDrag || (linkDrag.pointerId != null && linkDrag.pointerId !== e.pointerId)) return;
+  e.preventDefault();
+  linkMoveDrag(map.mouseEventToLatLng(e));
+}
+function linkPointerUp(e) {
+  if (!linkDrag || (linkDrag.pointerId != null && linkDrag.pointerId !== e.pointerId)) return;
+  e.preventDefault(); e.stopPropagation();
+  const r = map.getContainer().getBoundingClientRect();
+  const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  linkEndDrag(inside ? map.mouseEventToLatLng(e) : null);
+}
+function linkPointerCancel() { linkCancelDrag(); renderLinkPreview(); }
+function bindLinkPointer(mk, id) {
+  if (!mk._icon) return;
+  mk._icon.addEventListener("pointerdown", (e) => {
+    if (tool !== "link" || linkMode !== "connect" || (e.button != null && e.button !== 0)) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!linkBeginDrag(id, map.mouseEventToLatLng(e))) return;
+    linkDrag.pointerId = e.pointerId;
+    document.addEventListener("pointermove", linkPointerMove, { passive: false });
+    document.addEventListener("pointerup", linkPointerUp);
+    document.addEventListener("pointercancel", linkPointerCancel);
+    window.addEventListener("blur", linkPointerCancel);
+  });
+}
+function linkUndoStep() {
+  if (linkDrag) { linkCancelDrag(); renderLinkBar(); renderLinkPreview(); return; }
+  const before = linkSteps.pop();
+  if (before) { linkChain = before.chain; linkClosed = before.closed; }
+  else { linkChain = []; linkClosed = false; }
+  renderLinkBar(); renderLinkPreview();
+}
+function linkValidChain() {
+  return linkChain.length >= 2 && linkChain.every((id) => !!station(id));
+}
+function linkAppendPlan() {
+  if (!activeLine()) return { ok: false, reason: "先选择一条线路，或使用「新建线路」" };
+  if (!linkValidChain()) return { ok: false, reason: "先拖线连接至少两个车站" };
+  return planLinkAppend(activeLine(), linkClosed ? linkChain.concat(linkChain[0]) : linkChain);
 }
 function linkCommitAppend() {
-  const l = activeLine();
-  if (!l) { toast("先选一条线路，或改用「新建线路」", "bad"); return false; }
-  if (linkChain.length < 2) { toast("这一段至少要点两个站", "bad"); return false; }
-  const at = linkAnchorIndex(l);
-  if (at < 0) { toast("链里没有当前线路上的站 —— 用「新建线路」，或先点一个该线上的站", "bad"); return false; }
-  const add = linkChain.slice(at >= 0 && linkChain[0] === l.stations[at] ? 1 : 0).filter((id) => !l.stations.includes(id));
-  if (!add.length) { toast("这些站都已经在该线路上了", "bad"); return false; }
+  const l = activeLine(), plan = linkAppendPlan();
+  if (!plan.ok) { toast(plan.reason, "bad"); return false; }
   pushHistory();
-  spliceIntoLine(l, at + 1, add);
-  add.forEach((id) => { const st = station(id); if (st && st.lines.indexOf(l.id) < 0) st.lines.push(l.id); });
-  sel.line = l.id; linkReset(); renderAll(); markDirty();
+  if (plan.ids.length) spliceIntoLine(l, plan.at, plan.ids);
+  l.loop = plan.loop;
+  plan.ids.forEach((id) => { const st = station(id); if (!st.lines.includes(l.id)) st.lines.push(l.id); });
+  sel.line = l.id; sel.station = null;
+  linkReset(); renderAll(); markDirty();
   toast("已并入 " + l.name + "，共 " + l.stations.length + " 站", "good");
   return true;
 }
 function linkCommitNewLine() {
-  if (linkChain.length < 2) { toast("至少点两个站才能成线", "bad"); return false; }
+  if (!linkValidChain()) { toast("先拖线连接至少两个车站", "bad"); return false; }
+  /* addLine 已记录提交前快照；这里不重复记历史。 */
   const l = addLine(false);
-  pushHistory();
-  l.stations = linkChain.slice();
-  linkChain.forEach((id) => { const st = station(id); if (st && st.lines.indexOf(l.id) < 0) st.lines.push(l.id); });
+  l.stations = linkChain.slice(); l.loop = linkClosed;
+  linkChain.forEach((id) => { const st = station(id); if (!st.lines.includes(l.id)) st.lines.push(l.id); });
   sel.line = l.id; sel.station = null;
   linkReset(); renderAll(); markDirty();
-  toast("新建 " + l.name + "：" + l.stations.length + " 站", "good");
+  toast("新建 " + l.name + "：" + l.stations.length + " 站" + (l.loop ? " · 环线" : ""), "good");
   return true;
+}
+function renderLinkPreview() {
+  if (!map) return;
+  if (!linkLayer) linkLayer = L.layerGroup().addTo(map);
+  linkLayer.clearLayers();
+  if (tool !== "link") return;
+  const pts = linkChain.map((id) => station(id)).filter(Boolean).map((st) => [st.lat, st.lng]);
+  if (linkClosed && pts.length >= 3) pts.push(pts[0]);
+  if (pts.length >= 2) L.polyline(pts, { color: linkColor, weight: 4, opacity: .85, dashArray: "7 6", interactive: false }).addTo(linkLayer);
+  const highlighted = new Set(linkChain);
+  if (linkDrag) {
+    const st = station(linkDrag.from), target = station(linkDrag.target);
+    if (st) {
+      const ll = target ? [target.lat, target.lng] : linkDrag.latlng;
+      L.polyline([[st.lat, st.lng], ll], { color: target ? "#58D7A0" : linkColor, weight: 4, dashArray: "7 6", interactive: false }).addTo(linkLayer);
+      highlighted.add(st.id);
+    }
+    if (target) highlighted.add(target.id);
+  }
+  highlighted.forEach((id) => {
+    const st = station(id); if (!st) return;
+    L.circleMarker([st.lat, st.lng], { radius: 12, color: linkDrag && linkDrag.target === id ? "#58D7A0" : linkColor,
+      weight: 2, fillOpacity: 0, interactive: false }).addTo(linkLayer);
+  });
+}
+function renderLinkBar() {
+  let host = document.getElementById("linkCard");
+  if (tool !== "link") { if (host) host.innerHTML = ""; return; }
+  if (!host) { host = document.createElement("div"); host.id = "linkCard"; document.body.appendChild(host); }
+  const names = linkChain.map((id, i) => (i + 1) + ". " + ((station(id) || {}).name || "?")).join(" → ") + (linkClosed ? " → 首站（闭环）" : "");
+  const hint = linkMode === "place" ? "点击空白处放站；拖动圆点调整位置，再切到拖线连接" : "按住车站圆点，拖到另一站松开；从两端继续，拖回另一端闭环";
+  const l = activeLine(), plan = linkAppendPlan(), ready = linkValidChain();
+  host.innerHTML = '<div class="lk-in"><div class="lk-steps">' +
+    '<button class="tool' + (linkMode === "place" ? ' is-on' : '') + '" id="lkPlace">① 布置车站</button>' +
+    '<button class="tool' + (linkMode === "connect" ? ' is-on' : '') + '" id="lkConnect">② 拖线连接</button></div>' +
+    '<span class="lk-chain" title="' + esc(names || hint) + '">' + esc(names || hint) + '</span>' +
+    '<span class="lk-btns"><button class="tool" id="lkGo"' + (plan.ok ? '' : ' disabled') +
+    ' title="' + esc(plan.ok ? '按当前连接并入所选线路' : plan.reason) + '">并入 ' + esc(l ? l.badge || l.name : '当前线路') + '</button>' +
+    '<button class="tool" id="lkNew"' + (ready ? '' : ' disabled') + '>新建线路</button>' +
+    '<button class="tool" id="lkUndo"' + (linkChain.length ? '' : ' disabled') + '>撤一步</button>' +
+    '<button class="tool danger" id="lkCancel"' + (linkChain.length ? '' : ' disabled') + '>取消连接</button></span>' +
+    (ready && !plan.ok ? '<small class="lk-reason">' + esc(plan.reason) + '</small>' : '') + '</div>';
+  $("#lkPlace", host).onclick = () => linkSetMode("place");
+  $("#lkConnect", host).onclick = () => linkSetMode("connect");
+  $("#lkGo", host).onclick = linkCommitAppend;
+  $("#lkNew", host).onclick = linkCommitNewLine;
+  $("#lkUndo", host).onclick = linkUndoStep;
+  $("#lkCancel", host).onclick = () => { linkReset(); renderStatus(); toast("已取消连接，布置好的车站已保留"); };
+  if (P) { renderStatus(); updateHistoryButtons(); }
 }
 /* 把 A>B 那一段上的弯道点分到插入后的左右两半：along < 0.5 → 左半（×2），
    其余 → 右半（(along-0.5)×2），normal 原样保留。
@@ -4542,7 +5556,7 @@ function splitBendList(list) {
 }
 /* 在 at 位置插入一串站，并把被拆开的老段弯道 remap 到新段上。 */
 function spliceIntoLine(l, at, ids) {
-  const a = l.stations[at - 1], b = l.stations[at];
+  const a = l.stations[at - 1], b = l.stations[at] || (l.loop && at === l.stations.length ? l.stations[0] : null);
   const key = (a && b && a !== b) ? bendKey(a, b) : null;
   const old = key && l.bends ? l.bends[key] : null;
   l.stations.splice(at, 0, ...ids);
@@ -4554,29 +5568,6 @@ function spliceIntoLine(l, at, ids) {
     delete l.bends[key];
   }
   return !!(key && old && old.length);
-}
-function renderLinkPreview() {
-  if (!linkLayer) linkLayer = L.layerGroup().addTo(map);
-  linkLayer.clearLayers();
-  const pts = linkChain.map((id) => { const s = station(id); return s ? [s.lat, s.lng] : null; }).filter(Boolean);
-  if (pts.length >= 2) L.polyline(pts, { color: linkColor, weight: 4, opacity: .85, dashArray: "7 6", interactive: false }).addTo(linkLayer);
-}
-function renderLinkBar() {
-  let host = document.getElementById("linkCard");
-  if (!linkChain.length) { if (host) host.innerHTML = ""; return; }
-  if (!host) { host = document.createElement("div"); host.id = "linkCard"; document.body.appendChild(host); }
-  const names = linkChain.map((id, i) => (i + 1) + ". " + esc((station(id) || {}).name || "?")).join(" → ");
-  const l = activeLine();
-  const canAppend = !!(l && linkAnchorIndex(l) >= 0);
-  host.innerHTML = '<div class="lk-in"><b>连线中 · ' + linkChain.length + ' 站</b>' +
-    '<span class="lk-chain">' + names + '</span>' +
-    '<span class="lk-btns"><button class="tool" id="lkGo"' + (canAppend ? '' : ' disabled') + ' title="' + (canAppend ? '从链首那个站接下去，并进当前线路' : '链里没有当前线路上的站，只能新建') + '">并入 ' + esc(l ? (l.badge || l.name) : '当前线路') + '</button>' +
-    '<button class="tool" id="lkNew">新建线路</button><button class="tool" id="lkUndo">撤一步</button>' +
-    '<button class="tool danger" id="lkCancel">取消</button></span></div>';
-  $("#lkGo", host).onclick = linkCommitAppend;
-  $("#lkNew", host).onclick = linkCommitNewLine;
-  $("#lkUndo", host).onclick = () => { linkChain.pop(); if (!linkChain.length) linkReset(); else { renderLinkBar(); renderLinkPreview(); } };
-  $("#lkCancel", host).onclick = () => { linkReset(); renderMap(); toast("已取消这一段，没改动数据", "good"); };
 }
 function addStationAt(latlng) {
   let l = activeLine();
@@ -4603,14 +5594,17 @@ function addStationAt(latlng) {
   const row = $('#stnList [data-id="' + sel.station + '"]'); row && row.scrollIntoView({ block: "nearest" });
 }
 function setTool(t) {
+  if (t !== "select") navClose();
   /* 进出连线模式都清空那一串：半途切工具留下的大半条链，下次点上去只会莫名其妙
      把旧链续上（"我明明没点这几个站"）。 */
-  if (t !== tool) linkReset();
+  if (t !== tool) { linkReset(); if (t === "link") linkMode = "place"; }
   tool = t; pendingInsert = null;
   $$("#tSelect,#tAdd,#tLink").forEach((b) => b.classList.toggle("is-on", b.dataset.tool === t));
-  renderMap(); renderStatus();
+  renderMap(); renderLinkBar(); renderStatus(); updateHistoryButtons();
 }
 function setInsert(lineId, index) {
+  navClose();
+  linkReset();
   pendingInsert = { lineId, index };
   sel.line = lineId; tool = "add";
   $$("#tSelect,#tAdd,#tLink").forEach((b) => b.classList.toggle("is-on", b.dataset.tool === "add"));
@@ -4886,10 +5880,11 @@ function openSettings() {
 const HELP_ROWS = [
   ["V", "选择 / 编辑：点线选线，点圆点选站，拖动圆点改位置", "键"],
   ["A", "加站：在地图上依次点击生成车站序列", "键"],
-  ["C", "连线：先把站点定在地图上，再按点击顺序把它们串成线路（可并进当前线路或新建一条）；Esc 放弃", "键"],
+  ["C", "连线：先布置车站，再从圆点拖到另一站连接（可并入当前线路或新建）；Ctrl+Z 撤一步，Esc 退出", "键"],
   ["L", "新建一条线路（自动分配未用的线路色）", "键"],
   ["N", "选中线路时聚焦到站序列表：第一个车站被选中并滚到可见处", "键"],
   ["G", "按 RailMapGen 的语法自动生成标准线路图（只出成果图，不改你在地图上画的地理位置）", "键"],
+  ["R", "模拟导航：选择出发站和到达站，规划换乘并沿线路模拟乘车，可暂停、继续、重来", "键"],
   ["Del", "删除选中的车站；未选车站时删除选中线路", "键"],
   ["Ctrl+Z", "撤销（最多留 80 步）；Ctrl+Shift+Z 或 Ctrl+Y 重做", "键"],
   ["Ctrl+S", "导出当前图纸为 JSON", "键"],
@@ -5969,6 +6964,7 @@ function exportPng() {
 let nudgeAt = 0, nudgeId = null;
 function nudgeStation(dx, dy) {
   const st = station(sel.station); if (!st) return false;
+  navClose();
   const now = Date.now();
   if (nudgeId !== st.id || now - nudgeAt > 600) pushHistory();
   nudgeId = st.id; nudgeAt = now;
@@ -5981,8 +6977,8 @@ function nudgeStation(dx, dy) {
 function bindKeys() {
   document.addEventListener("keydown", (e) => {
     const t = e.target;
-    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) {
-      if (e.key === "Escape") t.blur();
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) {
+      if (e.key === "Escape") { if (nav && $("#navCard").contains(t)) navClose(); else t.blur(); }
       return;
     }
     if (document.querySelector(".scrim")) { if (e.key === "Escape") document.querySelector(".scrim").remove(); return; }
@@ -6006,9 +7002,10 @@ function bindKeys() {
       case "n": focusStnList(); break;
       case "f": fitAll(); break;
       case "g": openDiagram(); break;
+      case "r": openNavigation(); break;
       case "?": openHelp(); break;
-      case "c": setTool(tool === "link" ? "select" : "link"); toast(tool === "link" ? "连线模式：在地图上点站（点已有站会复用成换乘站），再点「并入」或「新建线路」提交；Esc 放弃" : "已退出连线模式"); break;
-      case "escape": linkReset(); pendingInsert = null; setTool("select"); deselect(); break;
+      case "c": setTool(tool === "link" ? "select" : "link"); toast(tool === "link" ? "连线模式：先布置车站，再切到「拖线连接」，从圆点拖到另一站；确认连接后保存" : "已退出连线模式"); break;
+      case "escape": navClose(); linkReset(); pendingInsert = null; setTool("select"); deselect(); break;
       case "delete": case "backspace":
         if (sel.station) deleteStation(sel.station);
         else if (sel.line) deleteLine(sel.line);
@@ -6035,6 +7032,7 @@ function bindChrome() {
   $("#tSettings").addEventListener("click", openSettings);
   $("#tHelp").addEventListener("click", openHelp);
   $("#tDiagram").addEventListener("click", openDiagram);
+  $("#tNavigate").addEventListener("click", openNavigation);
   $("#tImport").addEventListener("click", () => $("#fileInput").click());
   $("#tExportJson").addEventListener("click", exportJson);
   $("#tExportSvg").addEventListener("click", exportSvg);
@@ -6134,6 +7132,10 @@ function selfTest() {
   /* 撤销栈是全局的：不存好的话"回滚那条测试里的 openProject"会把用户图纸的
      撤销历史清空，跑完自检 Ctrl+Z 就没了。 */
   const savedHist = hist.slice(), savedFuture = future.slice();
+  const savedNav = navSuspend();
+  const savedLink = { chain: linkChain.slice(), closed: linkClosed, steps: linkSteps.slice(), mode: linkMode, tool };
+  linkReset();
+  setTool("select");
   const R = [];
   const t = (name, fn) => {
     const t0 = performance.now();
@@ -6148,6 +7150,805 @@ function selfTest() {
     settings = Object.assign(JSON.parse(savedSettings), { snap: false, predict: false });
     P = synthProject(24, 3); sel = { line: P.lines[0].id, station: null };
     map.setView(P.center, 13, { animate: false }); renderMap();
+
+// BEGIN NAVIGATION TESTS
+    t("模拟导航插值：按真实折线弧长前进，重复顶点不影响进度", () => {
+      const bad = [];
+      const check = (ok, message) => { if (!ok) bad.push(message); };
+      const sample = (points, fraction) => {
+        const result = navPointAt(points, fraction);
+        return result && result.point ? result.point : result;
+      };
+      const same = (point, expected) => !!point && Math.abs(point.x - expected.x) < 1e-9 && Math.abs(point.y - expected.y) < 1e-9;
+      const path = [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 4 }];
+      const duplicatePath = [path[0], path[0], path[1], path[1], path[2]];
+      const cases = [[0, { x: 0, y: 0 }], [3 / 7, { x: 3, y: 0 }], [.5, { x: 3, y: .5 }], [1, { x: 3, y: 4 }]];
+      try {
+        cases.forEach(([fraction, expected]) => {
+          check(same(sample(path, fraction), expected), "进度 " + fraction + " 未按 3+4 长度分配折线插值");
+          check(same(sample(duplicatePath, fraction), expected), "重复顶点改变了进度 " + fraction + " 的落点");
+        });
+        // Interpolating by vertex count puts the midpoint at (3,0), which must fail
+        // the same expected-position predicate that checks the actual sampler.
+        check(!same(path[1], cases[2][1]), "按顶点数量插值的负对照没有被识别");
+      } catch (e) { bad.push("异常：" + e.message); }
+      return { ok: !bad.length, detail: bad.length ? bad.join("；") :
+        "3+4 长度折线的起点/拐点/中途/终点均准确，重复顶点不变；按顶点数量插值的负对照被识别" };
+    });
+
+    t("模拟导航几何：曲线/共走廊/反向/换乘/闭环/重复站均沿实际色带，平移缩放后重新对齐", () => {
+      const saved = { p: P, sel, stack: settings.stack, view: [map.getCenter(), map.getZoom()],
+        dirty, owner: dirtyOwner, hist: hist.slice(), future: future.slice(), intent: userViewAt };
+      const bad = [];
+      const check = (ok, message) => { if (!ok) bad.push(message); };
+      let samples = 0, maxDistance = 0, chordRejected = false, offsetRejected = false;
+      const equalPoint = (a, b) => !!a && !!b && a.x === b.x && a.y === b.y;
+      const distanceToBand = (point, band) => {
+        if (!point || !isNum(point.x) || !isNum(point.y) || !band || band.length < 2) return Infinity;
+        let distance = Infinity;
+        for (let i = 1; i < band.length; i++) distance = Math.min(distance, distToSeg(point, band[i - 1], band[i]));
+        return distance;
+      };
+      // The same predicate checks real playback samples and deliberate wrong paths.
+      const onBand = (point, band) => distanceToBand(point, band) < 1e-7;
+      const samplePoint = (points, fraction) => {
+        const sample = navPointAt(points, fraction);
+        return sample && sample.point ? sample.point : sample;
+      };
+      try {
+        settings.stack = true;
+        map.setView(saved.view[0], 13, { animate: false });
+        const size = map.getSize(), x = size.x / 2, y = size.y / 2;
+        const positions = { nav_A: [-180, -60], nav_B: [-50, 35], nav_C: [80, -60],
+          nav_D: [165, 80], nav_E: [-130, 120] };
+        const fixture = { id: "synth-navigation-geometry", name: "导航几何自检", version: CURRENT_VERSION,
+          center: [map.getCenter().lat, map.getCenter().lng], zoom: map.getZoom(), lines: [], stations: {} };
+        Object.keys(positions).forEach((id) => {
+          const xy = positions[id], ll = map.containerPointToLatLng({ x: x + xy[0], y: y + xy[1] });
+          fixture.stations[id] = { id, name: id, lat: ll.lat, lng: ll.lng, lines: [], note: "", labelOff: null };
+        });
+        const addFixtureLine = (id, ids, width, loop, bends) => {
+          fixture.lines.push({ id, name: id, badge: id.slice(-1), color: "#E4002B", color2: "#FFFFFF",
+            colorMode: "mono", width, style: "solid", visible: true, stack: true,
+            stations: ids, loop: !!loop, bends: bends || {} });
+        };
+        addFixtureLine("nav_main", ["nav_A", "nav_B", "nav_C"], 6, false, {
+          "nav_A>nav_B": [{ along: .45, normal: .42 }], "nav_B>nav_C": [{ along: .55, normal: -.28 }] });
+        addFixtureLine("nav_shared", ["nav_A", "nav_B", "nav_C"], 10, false);
+        addFixtureLine("nav_branch", ["nav_C", "nav_D", "nav_E"], 7, false, {
+          "nav_D>nav_E": [{ along: .55, normal: .21 }] });
+        addFixtureLine("nav_ring", ["nav_E", "nav_A", "nav_C"], 5, true, {
+          "nav_C>nav_E": [{ along: .5, normal: -.24 }] });
+        addFixtureLine("nav_repeat", ["nav_A", "nav_B", "nav_C", "nav_B", "nav_D"], 5, false);
+        P = normalize(fixture); sel = { line: "nav_main", station: null };
+        const leg = (lineId, segmentIndex, direction) => {
+          const l = line(lineId), ids = shapeIds(l), reverse = direction === -1;
+          const a = segmentIndex, b = segmentIndex + 1;
+          return { lineId, segmentIndex, direction,
+            from: ids[reverse ? b : a], to: ids[reverse ? a : b],
+            fromIndex: (reverse ? b : a) % l.stations.length, toIndex: (reverse ? a : b) % l.stations.length };
+        };
+        const plan = (legs) => ({ ok: true, from: legs[0].from, to: legs[legs.length - 1].to, legs,
+          stations: [legs[0].from].concat(legs.map((edge) => edge.to)) });
+        const cases = [
+          plan([leg("nav_main", 0, 1), leg("nav_main", 1, 1)]),
+          plan([leg("nav_main", 1, -1), leg("nav_main", 0, -1)]),
+          plan([leg("nav_main", 0, 1), leg("nav_main", 1, 1), leg("nav_branch", 0, 1), leg("nav_branch", 1, 1)]),
+          plan([leg("nav_ring", 2, 1), leg("nav_ring", 0, 1)]),
+          plan([leg("nav_ring", 0, -1), leg("nav_ring", 2, -1)]),
+          plan([leg("nav_repeat", 3, 1)])
+        ];
+        const inspectView = (label) => {
+          renderLines(buildCorridorGroups());
+          const baseline = JSON.stringify(lineGeoPx);
+          cases.forEach((route, caseIndex) => {
+            const geometry = navGeometry(route);
+            check(Array.isArray(geometry) && geometry.length === route.legs.length,
+              label + " / 路径 " + caseIndex + " 的几何段数不符");
+            route.legs.forEach((edge, index) => {
+              const os = lineGeoPx[edge.lineId], actualBand = joinSegs(os || []);
+              const direct = navLegPoints(route.legs, index, lineGeoPx), points = geometry && geometry[index];
+              check(Array.isArray(direct) && direct.length >= 2 && Array.isArray(points) && points.length >= 2,
+                label + " / " + edge.lineId + " / " + edge.segmentIndex + " 没有有效折线");
+              if (!Array.isArray(points) || points.length < 2 || !Array.isArray(direct) || direct.length < 2 || !os || !os[edge.segmentIndex]) return;
+              check(JSON.stringify(points) === JSON.stringify(direct), label + " 的实时几何与已绘制几何不同");
+              const own = os[edge.segmentIndex].pts.slice();
+              if (edge.direction === -1) own.reverse();
+              // Every sampled curve point must occur in travel order; a whole-line
+              // flattening or an indexOf lookup cannot silently select another edge.
+              let cursor = 0;
+              own.forEach((point) => {
+                while (cursor < points.length && !equalPoint(point, points[cursor])) cursor++;
+                if (cursor < points.length) cursor++; else check(false, label + " 的段索引/反向顺序不准确");
+              });
+              check(equalPoint(points[points.length - 1], own[own.length - 1]), label + " 的终点偏离实际段尾");
+              [0, .125, .25, .375, .5, .625, .75, .875, 1].forEach((fraction) => {
+                const point = samplePoint(points, fraction), distance = distanceToBand(point, actualBand);
+                maxDistance = Math.max(maxDistance, distance); samples++;
+                check(onBand(point, actualBand), label + " / " + edge.lineId + " / " + edge.segmentIndex +
+                  " / " + fraction + " 车头离色带 " + distance.toFixed(6) + "px");
+              });
+            });
+          });
+          check(JSON.stringify(lineGeoPx) === baseline, label + " 的导航采样改写了共享线路几何");
+        };
+        inspectView("初始视图");
+        const main = line("nav_main"), raw = lineShapePx(main).segs[0].raw;
+        check(raw.length > 2 && Math.abs(lineGeoPx.nav_main[0].off) > 0,
+          "fixture 未覆盖真实曲线和共走廊偏移，几何检查没有区分力");
+        const a = map.latLngToContainerPoint([station("nav_A").lat, station("nav_A").lng]);
+        const b = map.latLngToContainerPoint([station("nav_B").lat, station("nav_B").lng]);
+        const band = joinSegs(lineGeoPx.nav_main);
+        chordRejected = !onBand({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, band);
+        offsetRejected = !onBand(samplePoint(raw, .375), band);
+        check(chordRejected, "负对照失效：站坐标直连中点仍通过贴线判据");
+        check(offsetRejected, "负对照失效：去掉共走廊偏移仍通过贴线判据");
+        map.panBy([47, -31], { animate: false }); inspectView("平移后");
+        map.setZoom(15, { animate: false }); inspectView("缩放后");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        P = saved.p; sel = saved.sel; settings.stack = saved.stack;
+        dirty = saved.dirty; dirtyOwner = saved.owner; hist = saved.hist; future = saved.future;
+        clearMarkerPools(); map.stop(); map.setView(saved.view[0], saved.view[1], { animate: false }); renderAll();
+        userViewAt = -Infinity; viewLockUntil = performance.now() + 2400;
+      }
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        samples + " 个实际色带采样，最大偏差 " + maxDistance.toFixed(9) +
+        "px；正反向/换乘/闭环接缝/重复站及平移缩放均对齐，站坐标直连和去偏移负对照均被识别" };
+    });
+
+    t("模拟导航到站：大时间步依次经过全部停站，终点恰好一次，完成后不重复播报", () => {
+      const bad = [];
+      const check = (ok, message) => { if (!ok) bad.push(message); };
+      let runs = 0, terminalControl = false, duplicateControl = false;
+      const arrivalOK = (state, expected) => state.status === "finished" &&
+        state.arrivals.length === expected.length && state.arrivals.every((event, index) =>
+          event.station === expected[index] && event.final === (index === expected.length - 1));
+      const route = (ids) => ({ ok: true, from: ids[0], to: ids[ids.length - 1], stations: ids,
+        legs: ids.slice(1).map((id, index) => ({ lineId: index < 2 ? "nav_first" : "nav_second",
+          segmentIndex: index < 2 ? index : index - 2, from: ids[index], to: id,
+          fromIndex: index, toIndex: index + 1, direction: 1 })) });
+      const cases = [["A", "B", "C"], ["A", "B", "C", "D", "E"], ["A", "B", "A", "C"]];
+      try {
+        cases.forEach((ids) => {
+          const plan = route(ids), durations = plan.legs.map((edge, index) => .25 + index * .125);
+          [true, false].forEach((oneStep) => {
+            const state = createNavPlayback(plan, durations);
+            check(state.status === "running" && state.phase === "stop" && state.index === 0 && state.elapsed === 0,
+              "播放初始状态不正确");
+            check(state.arrivals.length === 1 && state.arrivals[0].station === ids[0] && state.arrivals[0].final === false,
+              "播放起点没有准确记为一次非终点到站");
+            advanceNavPlayback(state, 0);
+            check(state.arrivals.length === 1, "零时间步重复报起点或推进到站");
+            if (oneStep) advanceNavPlayback(state, 3600);
+            else {
+              for (let step = 0; step < 2000 && state.status !== "finished"; step++) advanceNavPlayback(state, .075);
+            }
+            check(arrivalOK(state, ids), (oneStep ? "大时间步" : "细时间步") +
+              "未按站序精确报站并完成：" + JSON.stringify(state.arrivals));
+            const before = JSON.stringify(state.arrivals);
+            advanceNavPlayback(state, 3600); advanceNavPlayback(state, .5);
+            check(JSON.stringify(state.arrivals) === before && state.status === "finished", "完成后再次推进重复报终点");
+            if (runs === 0) {
+              // Use the exact arrival predicate against the historical lost-terminal
+              // failure and against an accidental second terminal announcement.
+              terminalControl = !arrivalOK(Object.assign({}, state, { arrivals: state.arrivals.slice(0, -1) }), ids);
+              duplicateControl = !arrivalOK(Object.assign({}, state, { arrivals: state.arrivals.concat(state.arrivals.slice(-1)) }), ids);
+              check(terminalControl, "漏终点负对照没有被到站判据识别");
+              check(duplicateControl, "重复终点负对照没有被到站判据识别");
+            }
+            runs++;
+          });
+        });
+      } catch (e) { bad.push("异常：" + e.message); }
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        runs + " 次单步/逐帧播放覆盖普通、换乘和重复到同站路径，全部站按顺序报到，终点只报一次；漏终点/重复终点负对照均被识别" };
+    });
+    t("模拟导航交互：跟随不改存档，暂停继续正常，自检保留控件，编辑清除车头和动画", () => {
+      const saved = { p: P, sel, tool, pending: pendingInsert, view: [map.getCenter(), map.getZoom()],
+        dirty, owner: dirtyOwner, hist: hist.slice(), future: future.slice(), flag: inSelfTest,
+        lock: viewLockUntil, intent: userViewAt, armed: viewCommitArmed, programmatic: navProgrammaticView,
+        nudgeId, nudgeAt,
+        timeout: window.setTimeout, clearTimeout: window.clearTimeout, panBy: map.panBy,
+        pillState: $("#savePill").dataset.state, pillText: $("#savePill span").textContent, pillTitle: $("#savePill").title,
+        navigation: navSuspend() };
+      const bad = [], timers = new Map();
+      const check = (ok, message) => { if (!ok) bad.push(message); };
+      const storageBytes = () => {
+        const entries = {}; Object.keys(localStorage).sort().forEach((key) => { entries[key] = localStorage.getItem(key); });
+        return JSON.stringify(entries);
+      };
+      const diskBefore = storageBytes();
+      let fakeTimer = -1000000, trackedGuard = false, followMoved = false, userControl = false, cleanupControl = false, mergedNudge = false;
+      let restoredNodes = 0, suspended = null;
+      // Keep the actual markDirty/view debounce code, but prevent its synthetic
+      // callbacks from surviving the synchronous test and writing a user's save.
+      window.setTimeout = (callback, delay, ...args) => {
+        const id = fakeTimer--; timers.set(id, { callback, delay, args }); return id;
+      };
+      window.clearTimeout = (id) => {
+        if (timers.has(id)) { timers.delete(id); return; }
+        if (typeof id === "number" && id <= -1000000) return;
+        saved.clearTimeout.call(window, id);
+      };
+      try {
+        inSelfTest = true; navProgrammaticView = false; userViewAt = -Infinity; viewLockUntil = Infinity;
+        P = synthProject(3, 1); P.id = "synth-navigation-ui";
+        sel = { line: P.lines[0].id, station: "x0" }; hist = []; future = []; dirty = false; dirtyOwner = null;
+        clearMarkerPools(); map.setView(P.center, P.zoom, { animate: false }); renderAll();
+        // Use Leaflet's rounded center as the baseline; opening the card must not
+        // inherit an unrelated, genuine pre-test viewport change.
+        const center = map.getCenter(); P.center = [center.lat, center.lng]; P.zoom = map.getZoom();
+        const baseline = projectFingerprint(P), baselineZoom = P.zoom, initialHist = JSON.stringify(hist), initialFuture = JSON.stringify(future);
+        const unchanged = () => projectFingerprint(P) === baseline && !dirty && dirtyOwner === null &&
+          JSON.stringify(hist) === initialHist && JSON.stringify(future) === initialFuture && storageBytes() === diskBefore;
+        inSelfTest = false; viewLockUntil = 0; viewByUser();
+        openNavigation();
+        check(!!nav && !$("#navCard").hidden && $("#tNavigate").classList.contains("is-on"), "导航入口没有显示卡片");
+        check(unchanged(), "打开导航改动了图纸/历史/未保存状态/本地存储");
+        navChooseStation("navFrom", "x0", false); navChooseStation("navTo", "x2", false);
+        $("#navPreference").value = "stops"; $("#navPreference").dispatchEvent(new Event("change", { bubbles: true }));
+        $("#navSpeed").value = "2"; $("#navSpeed").dispatchEvent(new Event("change", { bubbles: true }));
+        check(nav && nav.plan && nav.plan.ok && nav.plan.from === "x0" && nav.plan.to === "x2" && nav.plan.legs.length === 2,
+          "导航控件没有按 x0→x2 规划两段路径");
+        $("#navStart").click();
+        check(nav && nav.playback && nav.playback.status === "running" && !!nav.marker && !!nav.layer &&
+          map.hasLayer(nav.layer) && (document.hidden || !!nav.raf), "开始模拟没有运行状态/车头/图层/动画");
+        check(unchanged(), "开始模拟或首次跟随改动了图纸/历史/未保存状态/本地存储");
+        $("#navPause").click();
+        check(nav && nav.playback.status === "paused" && !nav.raf && $("#navPause").textContent === "继续", "暂停未停止动画或未提供继续按钮");
+        const pausedBytes = JSON.stringify(nav.playback);
+        advanceNavPlayback(nav.playback, 3600);
+        check(JSON.stringify(nav.playback) === pausedBytes, "暂停状态仍推进了停站或行车");
+        userViewAt = -Infinity;
+        map.setZoom(map.getZoom() + 1, { animate: false });
+        const pausedPoint = map.latLngToContainerPoint(nav.marker.getLatLng()), pausedSize = map.getSize();
+        check(nav.playback.status === "paused" && !nav.raf && pausedPoint.x >= 0 && pausedPoint.x <= pausedSize.x &&
+          pausedPoint.y >= 0 && pausedPoint.y <= pausedSize.y, "暂停列车缩放后没有重新跟随到可见范围或意外恢复播放");
+        check(unchanged(), "暂停列车的程序缩放/跟随改写了图纸视图或存档");
+        $("#navPause").click();
+        check(nav && nav.playback.status === "running" && $("#navPause").textContent === "暂停" &&
+          (document.hidden || !!nav.raf), "继续没有恢复模拟状态或动画");
+        $("#navFollow").checked = false; $("#navFollow").dispatchEvent(new Event("change", { bubbles: true }));
+        const nodes = Array.from($("#navCard").querySelectorAll("select,button,input"));
+        const values = nodes.map((node) => ({ node, value: node.value, checked: node.checked }));
+        const runtime = nav;
+        suspended = navSuspend();
+        check(suspended === runtime && !nav && $("#navCard").hidden && !runtime.raf && !runtime.marker && !runtime.layer &&
+          nodes.every((node) => !node.isConnected), "自检挂起没有移走控件并清理车头/动画");
+        navRestore(suspended); suspended = null;
+        values.forEach((entry) => {
+          const actual = $("#" + entry.node.id);
+          if (actual === entry.node && actual.value === entry.value && actual.checked === entry.checked) restoredNodes++;
+          else check(false, "自检恢复重建了控件或丢失选择值：" + entry.node.id);
+        });
+        check(nav === runtime && nav.speed === 2 && nav.preference === "stops" && !nav.follow &&
+          nav.playback.status === "running" && !$("#navCard").hidden, "自检恢复丢失模拟配置/运行状态");
+        $("#navPause").click();
+        check(nav && nav.playback.status === "paused", "恢复控件失去了原暂停事件监听");
+        $("#navPause").click();
+        check(nav && nav.playback.status === "running", "恢复控件失去了原继续事件监听");
+        check(unchanged(), "暂停/继续/自检挂起恢复改动了图纸或存档");
+        const beforeFollow = map.getCenter(), armedBefore = viewCommitArmed;
+        map.panBy = function () {
+          trackedGuard = navProgrammaticView;
+          const result = saved.panBy.apply(this, arguments);
+          commitViewNow(); // Exercise the guard while the synchronous moveend fires.
+          return result;
+        };
+        const size = map.getSize(), far = map.containerPointToLatLng({ x: size.x + 420, y: size.y + 320 });
+        viewByUser(); navFollowPoint(far); map.panBy = saved.panBy;
+        const afterFollow = map.getCenter();
+        followMoved = map.latLngToContainerPoint(beforeFollow).distanceTo(map.latLngToContainerPoint(afterFollow)) > 100;
+        check(followMoved && trackedGuard && !navProgrammaticView && userViewAt === -Infinity,
+          "强制跟随没有真实移动或没有清除程序视图归属/旧用户意图");
+        check(viewCommitArmed === armedBefore, "程序跟随 moveend 被当成用户移动排入记账");
+        commitViewNow();
+        check(unchanged(), "跟随结束后的立即记账仍把程序视图写进图纸");
+        // Explicitly prove the programmatic guard works even with recent input.
+        viewByUser(); navProgrammaticView = true; commitViewNow(); navProgrammaticView = false; userViewAt = -Infinity;
+        check(unchanged(), "程序视图保护没有拦住刚发生用户输入的立即记账");
+        const oldLayer = nav.layer, oldMarker = nav.marker, cleanupRuntime = nav;
+        cleanupControl = !!oldLayer && !!oldMarker && map.hasLayer(oldLayer) && map.hasLayer(oldMarker);
+        check(cleanupControl, "编辑清理负对照失效：编辑前没有实际导航图层或车头");
+        pushHistory();
+        check(!nav && !cleanupRuntime.raf && !cleanupRuntime.layer && !cleanupRuntime.marker &&
+          !map.hasLayer(oldLayer) && !map.hasLayer(oldMarker) && $("#navCard").hidden &&
+          !document.querySelector(".nav-train") && !$("#tNavigate").classList.contains("is-on"),
+          "开始编辑没有完整关闭导航、移走车头或取消动画");
+        check(hist.length === 1 && !future.length && projectFingerprint(P) === baseline,
+          "编辑前记历史没有只新增一笔原图快照");
+        hist = []; future = []; updateHistoryButtons(); commitViewNow();
+        check(unchanged(), "取消导航后旧程序移动又被记入图纸");
+        // A second arrow-key nudge inside the 600 ms undo merge window skips
+        // pushHistory. It remains an edit and must close navigation itself.
+        openNavigation();
+        check(!!nav && !$("#navCard").hidden, "历史合并窗微调用例没有真实打开导航");
+        const nudgedStation = station("x0"), oldCoordinates = [nudgedStation.lat, nudgedStation.lng];
+        const oldNudgeHistory = JSON.stringify(hist), nudgeRuntime = nav;
+        sel.station = "x0"; nudgeId = "x0"; nudgeAt = Date.now();
+        const nudgeAccepted = nudgeStation(1, 0);
+        mergedNudge = nudgeAccepted && JSON.stringify(hist) === oldNudgeHistory &&
+          (nudgedStation.lat !== oldCoordinates[0] || nudgedStation.lng !== oldCoordinates[1]);
+        check(mergedNudge, "历史合并窗内微调没有实际改坐标，或意外增加了一笔撤销");
+        check(!nav && $("#navCard").hidden && !nudgeRuntime.layer && !nudgeRuntime.marker && !nudgeRuntime.raf,
+          "历史合并窗跳过 pushHistory 后，微调仍留下导航卡片/图层/车头/动画");
+        // Restore only the intentional nudge, retaining the no-change predicate
+        // used by all earlier navigation operations.
+        nudgedStation.lat = oldCoordinates[0]; nudgedStation.lng = oldCoordinates[1];
+        dirty = false; dirtyOwner = null; userViewAt = -Infinity;
+        check(unchanged(), "合并窗微调回还后仍有额外图纸/历史/存档副作用");
+        // A genuine user pan must still commit. Timers are intercepted, and the
+        // synthetic edit is restored immediately before leaving this same stack.
+        viewByUser(); map.panBy([61, 37], { animate: false }); commitViewNow();
+        userControl = projectFingerprint(P) !== baseline && dirty && dirtyOwner === P.id;
+        check(userControl, "真实用户平移负对照没有正常改动视图和未保存状态");
+        check(Array.from(timers.values()).some((timer) => timer.delay === 550), "负对照未走到实际自动保存排程");
+        P.center = [center.lat, center.lng]; P.zoom = baselineZoom;
+        dirty = false; dirtyOwner = null; userViewAt = -Infinity;
+        check(storageBytes() === diskBefore, "导航交互或用户平移负对照实际写入了本地存储");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        inSelfTest = true; viewLockUntil = Infinity; userViewAt = -Infinity; navProgrammaticView = false;
+        window.setTimeout = saved.timeout; window.clearTimeout = saved.clearTimeout;
+        map.panBy = saved.panBy; navClose();
+        if (suspended && suspended.content) suspended.content.replaceChildren();
+        P = saved.p; sel = saved.sel; tool = saved.tool; pendingInsert = saved.pending;
+        hist = saved.hist; future = saved.future; dirty = saved.dirty; dirtyOwner = saved.owner;
+        nudgeId = saved.nudgeId; nudgeAt = saved.nudgeAt;
+        clearMarkerPools(); map.stop(); map.setView(saved.view[0], saved.view[1], { animate: false }); renderAll();
+        $$("#tSelect,#tAdd,#tLink").forEach((button) => button.classList.toggle("is-on", button.dataset.tool === tool));
+        navRestore(saved.navigation);
+        $("#savePill").dataset.state = saved.pillState; $("#savePill span").textContent = saved.pillText; $("#savePill").title = saved.pillTitle;
+        viewCommitArmed = saved.armed; userViewAt = saved.intent; navProgrammaticView = saved.programmatic;
+        inSelfTest = saved.flag; viewLockUntil = Math.max(saved.lock, performance.now() + 2400);
+      }
+      check(storageBytes() === diskBefore, "恢复原现场后本地存储字节不一致");
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        "开始/暂停/继续正常；" + restoredNodes + " 个控件保持原节点、值和事件监听；刚输入后强制跟随不记账，关闭/编辑清车头与动画，合并撤销窗内微调也关闭导航；真实用户平移负对照记账，保存排程同步截获，本地存储逐字节相同" };
+    });
+    t("模拟导航搜索：中文筛选、同名站、失效输入、键盘与交换不改图纸或存储", () => {
+      const saved = { p: P, fingerprint: projectFingerprint(P), sel, tool, pending: pendingInsert,
+        view: [map.getCenter(), map.getZoom()], dirty, owner: dirtyOwner, hist: hist.slice(), future: future.slice(),
+        flag: inSelfTest, lock: viewLockUntil, intent: userViewAt, armed: viewCommitArmed, programmatic: navProgrammaticView,
+        timeout: window.setTimeout, clearTimeout: window.clearTimeout,
+        pillState: $("#savePill").dataset.state, pillText: $("#savePill span").textContent, pillTitle: $("#savePill").title,
+        navigation: navSuspend() };
+      const bad = [], timers = new Map();
+      const check = (ok, message) => { if (!ok) bad.push(message); };
+      const storageBytes = () => {
+        const entries = {}; Object.keys(localStorage).sort().forEach((key) => { entries[key] = localStorage.getItem(key); });
+        return JSON.stringify(entries);
+      };
+      const diskBefore = storageBytes();
+      let fakeTimer = -2000000, suspended = null, duplicateControl = false, staleControl = false, keyboardChecks = 0;
+      window.setTimeout = (callback, delay, ...args) => {
+        const id = fakeTimer--; timers.set(id, { callback, delay, args }); return id;
+      };
+      window.clearTimeout = (id) => {
+        if (timers.has(id)) { timers.delete(id); return; }
+        if (typeof id === "number" && id <= -2000000) return;
+        saved.clearTimeout.call(window, id);
+      };
+      try {
+        inSelfTest = true; navProgrammaticView = false; userViewAt = -Infinity; viewLockUntil = Infinity;
+        const fixture = synthProject(8, 2);
+        fixture.id = "synth-navigation-search";
+        const names = ["科技园", "中央公园", "市民中心", "科技园", "南湖", "蓝线终点", "隐藏站", "在建站"];
+        names.forEach((name, i) => { fixture.stations["x" + i].name = name; });
+        fixture.lines[0].name = "红线"; fixture.lines[0].badge = "红"; fixture.lines[0].stations = ["x0", "x1", "x2"];
+        fixture.lines[1].name = "蓝线"; fixture.lines[1].badge = "蓝"; fixture.lines[1].stations = ["x2", "x3", "x4", "x5"];
+        fixture.lines.push(Object.assign({}, fixture.lines[0], { id: "search-hidden", name: "隐藏线", visible: false, stations: ["x6", "x0"] }));
+        fixture.lines.push(Object.assign({}, fixture.lines[1], { id: "search-building", name: "在建线", style: "dash", stations: ["x7", "x5"] }));
+        P = normalize(fixture); sel = { line: "y0", station: "x0" }; hist = []; future = []; dirty = false; dirtyOwner = null;
+        clearMarkerPools(); map.setView(P.center, P.zoom, { animate: false }); renderAll();
+        const center = map.getCenter(); P.center = [center.lat, center.lng]; P.zoom = map.getZoom();
+        const baseline = projectFingerprint(P), initialHist = JSON.stringify(hist), initialFuture = JSON.stringify(future);
+        const unchanged = () => projectFingerprint(P) === baseline && !dirty && dirtyOwner === null &&
+          JSON.stringify(hist) === initialHist && JSON.stringify(future) === initialFuture && storageBytes() === diskBefore;
+        const inputText = (fieldId, value) => {
+          const input = $("#" + fieldId); input.value = value; input.dispatchEvent(new Event("input", { bubbles: true })); return input;
+        };
+        const results = (fieldId) => $("#" + fieldId + "Results");
+        const options = (fieldId) => Array.from(results(fieldId).querySelectorAll('button[role="option"][data-station]'));
+        const key = (input, name, extra) => input.dispatchEvent(new KeyboardEvent("keydown", Object.assign({ key: name, bubbles: true, cancelable: true }, extra || {})));
+        const activeOption = (input) => document.getElementById(input.getAttribute("aria-activedescendant") || "");
+        openNavigation();
+        check(!!nav && $("#navFrom").tagName === "INPUT" && $("#navTo").tagName === "INPUT", "起终点没有使用搜索输入框");
+        const eligible = nav.choices.map((choice) => choice.id).sort();
+        check(eligible.join(",") === "x0,x1,x2,x3,x4,x5", "候选纳入了隐藏/在建车站或遗漏运营车站");
+        const choicesBefore = JSON.stringify(nav.choices), matches = navSearchMatches("科技", nav.choices);
+        const ids = matches.map((choice) => choice.id).sort();
+        const duplicatesOK = (candidates) => candidates.length === 2 && new Set(candidates.map((choice) => choice.id)).size === 2;
+        check(ids.join(",") === "x0,x3" && duplicatesOK(matches), "中文部分站名搜索没有保留两个不同 ID 的同名站");
+        duplicateControl = !duplicatesOK(matches.slice(0, 1));
+        check(duplicateControl, "按站名去重的负对照没有被识别");
+        check(JSON.stringify(nav.choices) === choicesBefore, "纯搜索修改了候选列表");
+        check(matches.every((choice) => (choice.label + " " + choice.detail).includes(choice.id === "x0" ? "红" : "蓝")),
+          "同名车站的候选缺少所属线路提示");
+        const byLine = navSearchMatches("红", nav.choices).map((choice) => choice.id).sort();
+        check(byLine.join(",") === "x0,x1,x2", "线路提示未参与搜索或混入其他线路的同名站");
+        const from = inputText("navFrom", "科技");
+        check(!from.dataset.stationId && !results("navFrom").hidden && from.getAttribute("aria-expanded") === "true" &&
+          options("navFrom").map((node) => node.dataset.station).sort().join(",") === "x0,x3", "输入中文没有展开正确候选或保留了旧起点 ID");
+        const blueTwin = options("navFrom").find((node) => node.dataset.station === "x3");
+        check(!!blueTwin && blueTwin.textContent.includes("蓝"), "蓝线同名候选没有线路提示");
+        if (blueTwin) blueTwin.click();
+        check(from.dataset.stationId === "x3" && nav.from === "x3" && from.value.includes("科技园") && results("navFrom").hidden,
+          "点击同名候选没有选中准确的蓝线车站 ID");
+        navChooseStation("navFrom", "x0", false); navChooseStation("navTo", "x5");
+        $("#navFollow").checked = false; $("#navFollow").dispatchEvent(new Event("change", { bubbles: true }));
+        $("#navStart").click();
+        const oldRuntime = nav, oldPlayback = nav.playback, oldLayer = nav.layer, oldMarker = nav.marker;
+        const invalidInputCleared = (runtime, input) => !input.dataset.stationId && !runtime.to && !runtime.plan &&
+          !runtime.playback && !runtime.raf && !runtime.layer && !runtime.marker && $("#navStart").disabled;
+        staleControl = !!oldPlayback && !!oldLayer && !!oldMarker && map.hasLayer(oldLayer) && map.hasLayer(oldMarker) &&
+          !invalidInputCleared(nav, $("#navTo"));
+        check(staleControl, "沿用旧目的地/播放的负对照未被失效输入判据识别");
+        const to = inputText("navTo", "不存在的站名");
+        check(nav === oldRuntime && invalidInputCleared(nav, to) && !map.hasLayer(oldLayer) && !map.hasLayer(oldMarker),
+          "修改目的地仍沿用旧 ID、路线、车头或动画");
+        check(!results("navTo").hidden && !options("navTo").length && !!results("navTo").textContent.trim(),
+          "无匹配输入没有明确提示或仍提供可选旧候选");
+        check(unchanged(), "搜索/点击/修改目的地改动了图纸、历史或存储");
+        inputText("navTo", "科技");
+        key(to, "ArrowDown");
+        check(!!activeOption(to), "向下键没有设置可访问的活动候选"); keyboardChecks++;
+        key(to, "ArrowUp");
+        const active = activeOption(to), expectedId = active && active.dataset.station;
+        check(!!expectedId && ["x0", "x3"].includes(expectedId), "向上键没有定位有效候选"); keyboardChecks++;
+        key(to, "Enter");
+        check(!!expectedId && to.dataset.stationId === expectedId && nav.to === expectedId && results("navTo").hidden,
+          "Enter 没有确认当前键盘候选的准确 ID"); keyboardChecks++;
+        inputText("navTo", "科技");
+        to.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "科" }));
+        key(to, "Enter", { isComposing: true });
+        check(!!nav && !to.dataset.stationId && !nav.to && results("navTo").hidden,
+          "中文输入法确认误选候选或仍显示组合前的旧候选"); keyboardChecks++;
+        key(to, "Escape", { isComposing: true });
+        check(!!nav && !$("#navCard").hidden && !to.dataset.stationId && results("navTo").hidden,
+          "中文输入法取消组合时意外关闭导航或重新显示旧候选"); keyboardChecks++;
+        to.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "科技" }));
+        check(!results("navTo").hidden && options("navTo").length === 2,
+          "中文组合结束没有按最终文字重新显示候选"); keyboardChecks++;
+        key(to, "Escape");
+        check(!!nav && !$("#navCard").hidden && results("navTo").hidden && to.getAttribute("aria-expanded") === "false",
+          "Escape 没有先收候选或意外关闭了导航"); keyboardChecks++;
+        key(to, "Escape");
+        check(!nav && $("#navCard").hidden, "候选关闭后第二次 Escape 未关闭导航"); keyboardChecks++;
+        openNavigation();
+        navChooseStation("navFrom", "x0", false); navChooseStation("navTo", "x5");
+        const fromBefore = $("#navFrom").value, toBefore = $("#navTo").value;
+        navSearchRender($("#navFrom")); $("#navSwap").click();
+        check($("#navFrom").dataset.stationId === "x5" && $("#navTo").dataset.stationId === "x0" &&
+          $("#navFrom").value === toBefore && $("#navTo").value === fromBefore && nav.from === "x5" && nav.to === "x0" &&
+          nav.plan && nav.plan.ok && nav.plan.from === "x5" && nav.plan.to === "x0" &&
+          results("navFrom").hidden && results("navTo").hidden, "交换起终点未同步 ID、文字、候选和反向路线");
+        // Retain a partially typed query across the same suspend/restore path used
+        // by the overall suite; original DOM nodes must still own their listeners.
+        const queryInput = inputText("navTo", "科技"), oldFromInput = $("#navFrom"), oldResults = results("navTo"), runtime = nav;
+        const confirmedFrom = oldFromInput.dataset.stationId, confirmedLabel = oldFromInput.value;
+        suspended = navSuspend(); navRestore(suspended); suspended = null;
+        check(nav === runtime && $("#navTo") === queryInput && results("navTo") === oldResults && $("#navFrom") === oldFromInput &&
+          queryInput.value === "科技" && !queryInput.dataset.stationId && oldFromInput.dataset.stationId === confirmedFrom &&
+          oldFromInput.value === confirmedLabel && !nav.to && !nav.plan, "挂起恢复丢失原输入节点、查询或确认 ID");
+        navSearchRender(queryInput);
+        const afterRestore = options("navTo").find((node) => node.dataset.station === "x0");
+        if (afterRestore) afterRestore.click();
+        check(!!afterRestore && queryInput.dataset.stationId === "x0" && nav.to === "x0" && nav.plan && nav.plan.ok,
+          "恢复后搜索候选或点击监听失效");
+        navHideSearch(queryInput);
+        check(results("navTo").hidden && queryInput.getAttribute("aria-expanded") === "false" && !queryInput.getAttribute("aria-activedescendant"),
+          "收起候选未清除展开/活动候选状态");
+        check(unchanged(), "键盘、交换或挂起恢复改动了图纸、历史或本地存储");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        inSelfTest = true; viewLockUntil = Infinity; userViewAt = -Infinity; navProgrammaticView = false;
+        window.setTimeout = saved.timeout; window.clearTimeout = saved.clearTimeout; navClose();
+        if (suspended && suspended.content) suspended.content.replaceChildren();
+        P = saved.p; sel = saved.sel; tool = saved.tool; pendingInsert = saved.pending;
+        hist = saved.hist; future = saved.future; dirty = saved.dirty; dirtyOwner = saved.owner;
+        clearMarkerPools(); map.stop(); map.setView(saved.view[0], saved.view[1], { animate: false }); renderAll();
+        $$("#tSelect,#tAdd,#tLink").forEach((button) => button.classList.toggle("is-on", button.dataset.tool === tool));
+        navRestore(saved.navigation);
+        $("#savePill").dataset.state = saved.pillState; $("#savePill span").textContent = saved.pillText; $("#savePill").title = saved.pillTitle;
+        viewCommitArmed = saved.armed; userViewAt = saved.intent; navProgrammaticView = saved.programmatic;
+        inSelfTest = saved.flag; viewLockUntil = Math.max(saved.lock, performance.now() + 2400);
+      }
+      check(P === saved.p && projectFingerprint(P) === saved.fingerprint, "恢复后原图纸内容变化");
+      check(storageBytes() === diskBefore, "恢复后本地存储字节变化");
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        "中文部分站名和线路筛选、同名站按 ID 点击、" + keyboardChecks + " 项键盘/输入法/Esc、交换和原节点恢复通过；修改输入立即清旧路线/车头/动画，无匹配禁开始；去重与沿用旧播放负对照有效，图纸/历史/存储逐字节不变" };
+    });
+    t("中英报站交互：下一站边走边播，到站打断旧报站并等双语，暂停和清理正常", () => {
+      const saved = { p: P, fingerprint: projectFingerprint(P), sel, tool, pending: pendingInsert,
+        view: [map.getCenter(), map.getZoom()], dirty, owner: dirtyOwner, hist: hist.slice(), future: future.slice(),
+        flag: inSelfTest, lock: viewLockUntil, intent: userViewAt, armed: viewCommitArmed, programmatic: navProgrammaticView,
+        advanceClock: navAdvanceClock,
+        pillState: $("#savePill").dataset.state, pillText: $("#savePill span").textContent, pillTitle: $("#savePill").title,
+        navigation: navSuspend() };
+      const bad = [], spoken = [], timers = new Map(), availability = [];
+      const check = (ok, message) => { if (!ok) bad.push(message); };
+      const storageBytes = () => {
+        const entries = {}; Object.keys(localStorage).sort().forEach((key) => { entries[key] = localStorage.getItem(key); });
+        return JSON.stringify(entries);
+      };
+      const diskBefore = storageBytes();
+      let timerId = 0, cancels = 0, completions = 0, freezeControl = false, arrivalControl = false, easingControl = false;
+      let suspendedSpeech = null;
+      const injectSpeaker = () => {
+        const owner = nav;
+        owner.speaker = createNavSpeaker({
+          speak(part, finish) { spoken.push({ text: part.text, lang: part.lang, finish }); },
+          cancel() { cancels++; },
+          later(callback) { const id = ++timerId; timers.set(id, callback); return id; },
+          unlater(id) { timers.delete(id); }
+        }, () => { completions++; navSpeechComplete(owner); });
+      };
+      // The deterministic adapter never calls the device's speech engine. Missing
+      // capability flags receive placeholders solely to exercise the real UI.
+      const ensureAvailability = (key, value) => {
+        if (window[key]) return;
+        availability.push({ key, descriptor: Object.getOwnPropertyDescriptor(window, key) });
+        Object.defineProperty(window, key, { configurable: true, value });
+      };
+      const toggleVoice = (enabled) => {
+        $("#navVoice").checked = enabled; $("#navVoice").dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const resumeHiddenAdapter = () => {
+        if (document.hidden) {
+          check(nav.speaker.paused && !nav.speaking, "隐藏页面继续时意外开始语音");
+          nav.speaking = true; nav.speaker.resume();
+        }
+      };
+      const clock = (now) => { navAdvanceClock(now); navCancelFrame(); };
+      const departFirst = () => { navStart(); navCancelFrame(); nav.lastTime = 0; clock(3600000); };
+      const atFirstDeparture = (state) => state.status === "running" && state.phase === "ride" && state.index === 0 &&
+        state.elapsed === 0 && state.arrivals.length === 1 && state.arrivals[0].station === "x0";
+      const atFirstArrival = (state) => state.status === "running" && state.phase === "stop" && state.index === 1 &&
+        state.elapsed === 0 && state.arrivals.length === 2 && state.arrivals[1].station === "x1";
+      const arrivalPreempted = (count, cancelled) => atFirstArrival(nav.playback) && cancels === cancelled + 1 &&
+        spoken.length === count + 1 && spoken.at(-1).lang === "zh-CN" && spoken.at(-1).text.startsWith("中央公园到了。");
+      try {
+        inSelfTest = true; navProgrammaticView = false; userViewAt = -Infinity; viewLockUntil = Infinity;
+        ensureAvailability("speechSynthesis", {}); ensureAvailability("SpeechSynthesisUtterance", function () {});
+        P = synthProject(3, 1); P.id = "synth-navigation-speech";
+        ["起点", "中央公园", "终点"].forEach((name, i) => { P.stations["x" + i].name = name; });
+        P.stations.x1.nameEn = "Central Park"; P.stations.x2.nameEn = "Terminal";
+        sel = { line: P.lines[0].id, station: "x0" }; hist = []; future = []; dirty = false; dirtyOwner = null;
+        clearMarkerPools(); map.setView(P.center, P.zoom, { animate: false }); renderAll();
+        const center = map.getCenter(); P.center = [center.lat, center.lng]; P.zoom = map.getZoom();
+        const baseline = projectFingerprint(P), initialHist = JSON.stringify(hist), initialFuture = JSON.stringify(future);
+        const unchanged = () => projectFingerprint(P) === baseline && !dirty && dirtyOwner === null &&
+          JSON.stringify(hist) === initialHist && JSON.stringify(future) === initialFuture && storageBytes() === diskBefore;
+        openNavigation();
+        navChooseStation("navFrom", "x0", false); navChooseStation("navTo", "x2");
+        $("#navFollow").checked = false; $("#navFollow").dispatchEvent(new Event("change", { bubbles: true }));
+        navStart(); navCancelFrame(); injectSpeaker(); inSelfTest = false; toggleVoice(true);
+        nav.lastTime = 0; clock(3600000);
+        check(atFirstDeparture(nav.playback) && nav.announcement.type === "next" && nav.announcement.station === "x1" &&
+          nav.speaker.busy && nav.speaking && spoken.length === 1 && spoken[0].lang === "zh-CN",
+          "大时间步未进入第一段行车，或下一站没有先播中文");
+        const departurePoint = nav.marker.getLatLng(), beforeRideTime = nav.lastTime;
+        const rideSample = nav.playback.durations[0] * .1, sampleTime = 3600000 + rideSample * 1000;
+        // Restore the old freeze-while-speaking behavior temporarily. The same
+        // movement predicate must reject it, then pass against the real clock.
+        try {
+          navAdvanceClock = (now) => {
+            if (nav.speaker && nav.speaker.busy) { nav.lastTime = null; return; }
+            saved.advanceClock(now);
+          };
+          clock(sampleTime);
+          freezeControl = !(nav.playback.elapsed > 0 && nav.lastTime === sampleTime);
+          check(freezeControl, "下一站旧冻结逻辑的负对照未被行车判据识别");
+        } finally { navAdvanceClock = saved.advanceClock; nav.lastTime = beforeRideTime; }
+        clock(sampleTime);
+        check(nav.playback.phase === "ride" && Math.abs(nav.playback.elapsed - rideSample) < 1e-8 && nav.speaker.busy &&
+          nav.lastTime === sampleTime && map.distance(departurePoint, nav.marker.getLatLng()) > .01,
+          "下一站中文期间列车仍冻结，或没有移动真实车头");
+        const eased = navRideFraction(.1), expectedPoint = navPointAt(nav.points[0], eased);
+        const expectedPosition = map.unproject(expectedPoint, nav.geoZoom);
+        const constantPosition = map.unproject(navPointAt(nav.points[0], .1), nav.geoZoom);
+        easingControl = map.distance(constantPosition, expectedPosition) > .01;
+        check(easingControl, "未接入加减速的匀速车头负对照没有被位置判据识别");
+        check(map.distance(nav.marker.getLatLng(), expectedPosition) < .01 &&
+          Math.abs($("#navProgress").value - eased / nav.plan.legs.length) < 1e-8,
+          "真实车头或进度条没有使用行车加减速后的距离比例");
+        navScheduleFrame();
+        check(document.hidden || !!nav.raf, "下一站中文期间没有持续安排动画帧"); navCancelFrame();
+        spoken[0].finish();
+        check(spoken.length === 2 && spoken[1].lang === "en-US" && spoken[1].text.includes("Central Park") &&
+          nav.speaker.busy && completions === 0, "下一站中文没有顺序接英文");
+        clock(sampleTime + 200);
+        check(nav.playback.phase === "ride" && Math.abs(nav.playback.elapsed - rideSample - .2) < 1e-8 && nav.speaker.busy,
+          "下一站英文期间列车仍冻结");
+        spoken[1].finish(); navCancelFrame();
+        check(completions === 1 && !nav.speaker.busy && !nav.speaking && nav.lastTime === sampleTime + 200,
+          "下一站双语结束重置了仍在行车的时钟");
+        clock(sampleTime + 400);
+        check(Math.abs(nav.playback.elapsed - rideSample - .4) < 1e-8, "下一站播报完成后的行车漏算了一帧");
+        navScheduleFrame();
+        check(document.hidden || !!nav.raf, "下一站结束后没有安排继续行车"); navCancelFrame();
+
+        // Reach the first arrival before next-station Chinese finishes. The
+        // no-replacement mutant must fail the immediate arrival/cancel predicate.
+        departFirst();
+        const oldNextChinese = spoken.at(-1), oldWatchdog = timers.values().next().value;
+        const beforeArrival = spoken.length, beforeArrivalCancel = cancels, realSpeak = nav.speaker.speak;
+        try {
+          nav.speaker.speak = function (parts) { if (!this.busy) realSpeak.call(this, parts); };
+          clock(7200000);
+          arrivalControl = !arrivalPreempted(beforeArrival, beforeArrivalCancel);
+          check(arrivalControl, "到站不取消下一站的负对照未被替换判据识别");
+        } finally { nav.speaker.speak = realSpeak; }
+        navAnnounce(nav.announcement); navCancelFrame();
+        check(arrivalPreempted(beforeArrival, beforeArrivalCancel) && nav.announcement.type === "arrival" &&
+          nav.announcement.station === "x1" && nav.speaker.busy && nav.speaking,
+          "到站没有立即取消未完的下一站中文并播到站中文");
+        const arrivalCount = spoken.length, waitingArrival = JSON.stringify(nav.playback);
+        oldNextChinese.finish(); oldWatchdog();
+        check(spoken.length === arrivalCount && completions === 1, "旧下一站中文/定时器回调泄漏英文或完成事件");
+        clock(10800000);
+        check(JSON.stringify(nav.playback) === waitingArrival && nav.lastTime === null,
+          "到站中文期间列车没有保持停站");
+        const originalChinese = spoken.at(-1), beforePause = spoken.length, beforeCancel = cancels;
+        navTogglePause(); navCancelFrame();
+        const pausedBytes = JSON.stringify(nav.playback);
+        check(nav.playback.status === "paused" && nav.speaker.busy && nav.speaker.paused && !nav.speaking &&
+          cancels === beforeCancel + 1 && !nav.raf, "到站中文暂停没有取消当前语音并保留语言");
+        originalChinese.finish(); clock(14400000);
+        check(spoken.length === beforePause && JSON.stringify(nav.playback) === pausedBytes && completions === 1,
+          "到站暂停后的旧中文回调仍播英文或推进模拟");
+        navTogglePause(); navCancelFrame(); resumeHiddenAdapter();
+        check(nav.playback.status === "running" && spoken.length === beforePause + 1 &&
+          spoken.at(-1).lang === "zh-CN" && spoken.at(-1).text === originalChinese.text,
+          "到站中文继续没有从中断语言重新播放");
+        spoken.at(-1).finish();
+        const originalEnglish = spoken.at(-1), beforeEnglishPause = spoken.length;
+        check(originalEnglish.lang === "en-US" && nav.speaker.busy && completions === 1,
+          "到站中文完成没有接英文，或提前解除停站等待");
+        const waitingEnglish = JSON.stringify(nav.playback); clock(18000000);
+        check(JSON.stringify(nav.playback) === waitingEnglish && nav.lastTime === null,
+          "到站英文期间列车提前离站");
+        navTogglePause(); navCancelFrame(); originalEnglish.finish();
+        check(nav.speaker.paused && spoken.length === beforeEnglishPause && completions === 1,
+          "到站英文暂停后的旧回调仍完成播报");
+        navTogglePause(); navCancelFrame(); resumeHiddenAdapter();
+        check(spoken.length === beforeEnglishPause + 1 && spoken.at(-1).lang === "en-US" &&
+          spoken.at(-1).text === originalEnglish.text, "到站英文继续时丢失当前语言");
+        spoken.at(-1).finish(); navCancelFrame();
+        check(completions === 2 && !nav.speaker.busy && !nav.speaking && nav.lastTime === null,
+          "到站双语完成后仍在等待或没有清理时钟");
+        clock(21600000);
+        check(JSON.stringify(nav.playback) === waitingArrival, "到站播报结束后的首帧补算了等待期间时间");
+        clock(25200000);
+        check(nav.playback.phase === "ride" && nav.playback.index === 1 && nav.playback.elapsed === 0 &&
+          nav.announcement.type === "next" && nav.announcement.station === "x2" && nav.speaker.busy,
+          "到站双语结束后未正常离站并播下一站");
+        spoken.at(-1).finish();
+        const rideEnglish = spoken.at(-1), rideCount = spoken.length;
+        clock(25200200);
+        check(nav.playback.elapsed > 0 && nav.speaker.busy && rideEnglish.lang === "en-US",
+          "第二段下一站英文期间未行车");
+        navTogglePause(); navCancelFrame();
+        const pausedRide = JSON.stringify(nav.playback); rideEnglish.finish(); clock(28800000);
+        check(nav.playback.status === "paused" && nav.speaker.paused && !nav.speaking && !nav.raf &&
+          JSON.stringify(nav.playback) === pausedRide && spoken.length === rideCount && completions === 2,
+          "行车中暂停没有同时停下车和下一站英文");
+        navTogglePause(); navCancelFrame(); resumeHiddenAdapter();
+        const resumedRideEnglish = spoken.at(-1);
+        check(nav.playback.status === "running" && resumedRideEnglish.lang === "en-US" &&
+          resumedRideEnglish.text === rideEnglish.text && spoken.length === rideCount + 1,
+          "行车继续未恢复列车状态与当前下一站英文");
+        clock(32400000); const rideElapsed = nav.playback.elapsed; clock(32400200);
+        check(nav.playback.phase === "ride" && nav.playback.elapsed > rideElapsed && nav.speaker.busy,
+          "行车继续后等待下一站语音而冻结");
+        const finalCancel = cancels, finalCountBefore = spoken.length;
+        clock(36000000);
+        const finalChinese = spoken.at(-1), finalBytes = JSON.stringify(nav.playback);
+        check(nav.playback.status === "finished" && nav.announcement.type === "arrival" && nav.announcement.final &&
+          nav.speaker.busy && cancels === finalCancel + 1 && spoken.length === finalCountBefore + 1 &&
+          finalChinese.lang === "zh-CN" && finalChinese.text.startsWith("终点站，终点到了。"),
+          "终点到站未立即取消未完的下一站英文并改播到站中文");
+        rideEnglish.finish(); resumedRideEnglish.finish();
+        check(spoken.length === finalCountBefore + 1 && completions === 2,
+          "终点到站后的旧下一站英文回调仍完成或改变报站");
+        const beforeFinalPause = spoken.length;
+        check(!$("#navPause").disabled && $("#navPause").textContent === "暂停", "终点中文期间暂停按钮提前禁用");
+        $("#navPause").click(); navCancelFrame(); finalChinese.finish();
+        check(nav.speaker.paused && nav.speaker.busy && !nav.speaking && !$("#navPause").disabled &&
+          $("#navPause").textContent === "继续" && JSON.stringify(nav.playback) === finalBytes &&
+          spoken.length === beforeFinalPause && completions === 2, "终点中文暂停没有保留语言或旧回调仍生效");
+        const pausedFinalOwner = nav, pausedFinalButton = $("#navPause");
+        suspendedSpeech = navSuspend();
+        check(!nav && suspendedSpeech === pausedFinalOwner && suspendedSpeech.userSpeechPaused &&
+          suspendedSpeech.speaker.paused && !suspendedSpeech.raf && !suspendedSpeech.marker,
+          "终点手动暂停后的挂起没有保留暂停意图或清理车头");
+        navRestore(suspendedSpeech); suspendedSpeech = null; navCancelFrame(); navResumeSpeech();
+        check(nav === pausedFinalOwner && $("#navPause") === pausedFinalButton && nav.userSpeechPaused &&
+          nav.speaker.paused && !nav.speaking && !nav.raf && spoken.length === beforeFinalPause &&
+          $("#navPause").textContent === "继续" && JSON.stringify(nav.playback) === finalBytes,
+          "终点手动暂停在挂起恢复后自动开始播报或丢失原按钮");
+        $("#navPause").click(); navCancelFrame(); resumeHiddenAdapter();
+        check(!nav.speaker.paused && !nav.userSpeechPaused && spoken.length === beforeFinalPause + 1 && spoken.at(-1).lang === "zh-CN" &&
+          spoken.at(-1).text === finalChinese.text && JSON.stringify(nav.playback) === finalBytes,
+          "终点中文继续改变路线或丢失语言");
+        spoken.at(-1).finish();
+        const finalEnglish = spoken.at(-1), beforeFinalEnglishPause = spoken.length;
+        check(finalEnglish.lang === "en-US" && nav.speaker.busy && !$("#navPause").disabled,
+          "终点中文完成后未接英文或英文期间无法暂停");
+        $("#navPause").click(); navCancelFrame(); finalEnglish.finish();
+        check(nav.speaker.paused && $("#navPause").textContent === "继续" && spoken.length === beforeFinalEnglishPause &&
+          completions === 2, "终点英文暂停后旧回调仍完成播报");
+        $("#navPause").click(); navCancelFrame(); resumeHiddenAdapter();
+        check(!nav.speaker.paused && spoken.length === beforeFinalEnglishPause + 1 && spoken.at(-1).lang === "en-US" &&
+          spoken.at(-1).text === finalEnglish.text, "终点英文继续丢失当前语言");
+        spoken.at(-1).finish(); navCancelFrame();
+        const completedCount = spoken.length;
+        check(completions === 3 && !nav.speaker.busy && !nav.speaking && $("#navPause").disabled &&
+          $("#navPause").textContent === "暂停" && JSON.stringify(nav.playback) === finalBytes,
+          "终点双语完成后没有禁用暂停或重复记到站");
+        $("#navPause").click(); clock(39600000); navScheduleFrame();
+        check(spoken.length === completedCount && completions === 3 && !nav.raf && JSON.stringify(nav.playback) === finalBytes,
+          "终点双语完成后操作又触发行车或重复报站");
+        check(unchanged(), "报站/途中和终点暂停继续改动图纸、历史或存储");
+
+        // Muting during a real arrival releases the station dwell and invalidates
+        // callbacks; no speech may be produced as the remaining journey finishes.
+        departFirst(); clock(7200000);
+        const disabledCallback = spoken.at(-1).finish, beforeDisable = spoken.length;
+        check(atFirstArrival(nav.playback) && nav.speaker.busy, "关闭语音用例没有真实到站等待");
+        toggleVoice(false);
+        check(!nav.voice && !nav.speaker.busy && !nav.speaking && nav.lastTime === null &&
+          (document.hidden || !!nav.raf), "关闭语音未清等待或未恢复动画排程");
+        navCancelFrame(); disabledCallback();
+        check(spoken.length === beforeDisable && completions === 3, "关闭语音后旧回调仍续播或完成");
+        clock(10800000); clock(14400000);
+        check(nav.playback.status === "finished" && nav.playback.arrivals.map((event) => event.station).join(",") === "x0,x1,x2" &&
+          !nav.speaker.busy && spoken.length === beforeDisable, "关闭语音后卡在等待、漏终点或发出新语音");
+        toggleVoice(true);
+        const replanCallback = spoken.at(-1).finish, replanCount = spoken.length, oldLayer = nav.layer;
+        check(nav.speaker.busy, "重规划用例没有真实待播语音");
+        navReplan(); navCancelFrame(); replanCallback();
+        check(!nav.playback && !nav.speaker.busy && !nav.speaking && !nav.announcement && !nav.marker && !nav.raf &&
+          !map.hasLayer(oldLayer) && $("#navAnnouncement").hidden && spoken.length === replanCount && completions === 3,
+          "重规划未清语音/图层，或旧回调仍生效");
+        departFirst();
+        const restartCallback = spoken.at(-1).finish, restartCount = spoken.length, oldPlayback = nav.playback;
+        $("#navRestart").click(); navCancelFrame(); restartCallback();
+        check(nav.playback !== oldPlayback && nav.playback.phase === "stop" && nav.playback.index === 0 &&
+          nav.playback.arrivals.length === 1 && !nav.speaker.busy && !nav.speaking && !nav.announcement &&
+          spoken.length === restartCount && completions === 3, "重来沿用旧播放/语音或旧回调仍生效");
+        nav.lastTime = 0; clock(3600000);
+        const closeCallback = spoken.at(-1).finish, closed = nav, closeLayer = nav.layer, closeMarker = nav.marker, closeCount = spoken.length;
+        navClose(); closeCallback();
+        check(!nav && !closed.speaker.busy && !closed.speaking && !closed.raf && !closed.layer && !closed.marker &&
+          !map.hasLayer(closeLayer) && !map.hasLayer(closeMarker) && $("#navCard").hidden &&
+          spoken.length === closeCount && completions === 3 && !timers.size, "关闭导航仍留语音/定时器/车头或旧回调仍生效");
+        check(unchanged(), "关闭语音/重规划/重来/关闭导航改动图纸、历史或存储");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        navAdvanceClock = saved.advanceClock;
+        if (suspendedSpeech && suspendedSpeech.speaker) suspendedSpeech.speaker.clear();
+        inSelfTest = true; viewLockUntil = Infinity; userViewAt = -Infinity; navProgrammaticView = false; navClose();
+        availability.forEach(({ key, descriptor }) => {
+          if (descriptor) Object.defineProperty(window, key, descriptor); else delete window[key];
+        });
+        P = saved.p; sel = saved.sel; tool = saved.tool; pendingInsert = saved.pending;
+        hist = saved.hist; future = saved.future; dirty = saved.dirty; dirtyOwner = saved.owner;
+        clearMarkerPools(); map.stop(); map.setView(saved.view[0], saved.view[1], { animate: false }); renderAll();
+        $$("#tSelect,#tAdd,#tLink").forEach((button) => button.classList.toggle("is-on", button.dataset.tool === tool));
+        navRestore(saved.navigation);
+        $("#savePill").dataset.state = saved.pillState; $("#savePill span").textContent = saved.pillText; $("#savePill").title = saved.pillTitle;
+        viewCommitArmed = saved.armed; userViewAt = saved.intent; navProgrammaticView = saved.programmatic;
+        inSelfTest = saved.flag; viewLockUntil = Math.max(saved.lock, performance.now() + 2400);
+      }
+      check(P === saved.p && projectFingerprint(P) === saved.fingerprint && storageBytes() === diskBefore,
+        "恢复原现场后图纸或本地存储字节变化");
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        "下一站中英期间车头按加减速距离持续行进且结束不丢时钟；到站打断下一站中文/英文并完整等待双语；途中、停站与终点可暂停续播，终点手动暂停挂起恢复保留；关闭语音/重规划/重来/关闭取消旧回调，旧冻结/不取消/匀速负对照有效；未调用设备语音，图纸/历史/存储逐字节不变" };
+    });
+// END NAVIGATION TESTS
 
     t("弯道坐标往返（像素↔弦相对）", () => {
       const s = lineShape(P.lines[0], (x) => map.latLngToContainerPoint([x.lat, x.lng])).segs[0];
@@ -7769,7 +9570,7 @@ function selfTest() {
         inSelfTest = true;
         P = synthProject(20, 3); sel = { line: P.lines[0].id, station: null };
         map.setView(P.center, 13, { animate: false }); renderMap();
-        const ex = spy("exportJson"), st = spy("showSelfTest"), dg = spy("openDiagram"), hp = spy("openHelp"), fa = spy("fitAll");
+        const ex = spy("exportJson"), st = spy("showSelfTest"), dg = spy("openDiagram"), hp = spy("openHelp"), fa = spy("fitAll"), nr = spy("openNavigation");
         origZoomIn = map.zoomIn;
         map.zoomIn = function () { zoomInHits++; return map; };
         const checks = {
@@ -7779,6 +9580,7 @@ function selfTest() {
           "L": () => { const n = P.lines.length; press({ key: "l" }); return P.lines.length === n + 1; },
           "N": () => { sel = { line: P.lines[0].id, station: null }; renderAll(); press({ key: "n" }); return sel.station === P.lines[0].stations[0]; },
           "G": () => { const b = dg(); press({ key: "g" }); return dg() === b + 1; },
+          "R": () => { const b = nr(); press({ key: "r" }); return nr() === b + 1; },
           "Del": () => { const sid = P.lines[0].stations[2]; sel = { line: P.lines[0].id, station: sid }; renderAll(); const n = Object.keys(P.stations).length; press({ key: "Delete" }); return Object.keys(P.stations).length === n - 1; },
           "Ctrl+Z": () => { const n = Object.keys(P.stations).length; press({ key: "z", ctrlKey: true }); return Object.keys(P.stations).length === n + 1; },
           "Ctrl+S": () => { const b = ex(); press({ key: "s", ctrlKey: true }); return ex() === b + 1; },
@@ -7803,7 +9605,7 @@ function selfTest() {
         letters.forEach((k) => { if (docKeys.indexOf(k) < 0) bad.push("bindKeys 实现了 " + k + " 却没写进帮助"); });
         /* 死键检查：文档里每条"键"都要在 bindKeys 源码里找得到对应分支 */
         const tokens = {
-          "V": '"v"', "A": '"a"', "C": '"c"', "L": '"l"', "N": '"n"', "G": '"g"', "Del": '"delete"',
+          "V": '"v"', "A": '"a"', "C": '"c"', "L": '"l"', "N": '"n"', "G": '"g"', "R": '"r"', "Del": '"delete"',
           "Ctrl+Z": '"z"', "Ctrl+S": '"s"', "F": '"f"', "±": '"+"', "方向键": "Arrow",
           "Esc": '"escape"', "?": '"?"', "Shift+T": '"t"'
         };
@@ -8825,10 +10627,13 @@ function selfTest() {
          让"只渲染 PASS"的写法蒙不过去。最后再演练一次"自检自己抛错"：角标必须被摘掉、
          异常必须如实显示，否则用户看到的就是一场没有下文的假死。 */
       const scrimBefore = document.querySelectorAll(".scrim").length;
+      /* 从 Shift+T 进入时外层套件已有角标，这里只核对这次模拟运行新建的角标。 */
+      const busyBefore = new Set(document.querySelectorAll(".st-busy"));
+      const ownBusy = () => Array.from(document.querySelectorAll(".st-busy")).find((b) => !busyBefore.has(b));
       const prevTrace = selfTrace;
       let seen = null;
       const fake = () => {
-        const b = document.querySelector(".st-busy");
+        const b = ownBusy();
         seen = { busy: !!b, text: b ? b.textContent : "", scrim: !!document.querySelector(".scrim") };
         return { passed: 1, failed: 1, total: 2, rows: [
           { name: "甲项", ok: true, detail: "一切正常", ms: 1 },
@@ -8843,7 +10648,7 @@ function selfTest() {
         else if (!/正在跑|不响应/.test(seen.text)) bad.push("角标文案没说明这几秒为什么不响应");
         if (seen.scrim) bad.push("跑断言期间文档里有 .scrim，快捷键会被 bindKeys 整段吞掉");
       }
-      if (document.querySelector(".st-busy")) bad.push("跑完之后角标还挂着");
+      if (ownBusy()) bad.push("跑完之后角标还挂着");
       const sc = d.scrim;
       const head = $("#stCount", sc);
       const px = $("#stPixel", sc), again = $("#stAgain", sc);
@@ -8864,7 +10669,8 @@ function selfTest() {
       if (selfTrace !== prevTrace) bad.push("selfTrace 被对话框抹掉了：" + prevTrace + " → " + selfTrace);
       d.close();
       const e1 = showSelfTest(true, () => { throw new Error("演练：自检自己抛错"); });
-      if (document.querySelector(".st-busy")) bad.push("自检抛错之后角标还挂着");
+      if (ownBusy()) bad.push("自检抛错之后角标还挂着");
+      if (Array.from(busyBefore).some((b) => !b.isConnected)) bad.push("模拟自检误删了外层套件的角标");
       if (!/自检本身抛错/.test(e1.scrim.textContent)) bad.push("抛错没有如实显示给用户");
       e1.close();
       if (document.querySelectorAll(".scrim").length !== scrimBefore) bad.push("两次面板没摘干净：" + scrimBefore + " → " + document.querySelectorAll(".scrim").length);
@@ -10009,7 +11815,7 @@ function selfTest() {
         "名字 5 收 10 拒（含 .. / 反斜杠 / 控制字符 / 超长）；协议 8 档 + 宽松写法负对照；自动上传四道闸逐道都拦得住；" +
         "工具条按钮有名字且接 archive 命令；自检中不排程、四道全开才排程（本次走的是 " + archBranch + "），设置用完即还原" };
     });
-    t("连线模式：拆段后的弯道 remap 不丢形状、链能攒能撤、切换工具清空、没攒够不给提交", () => {
+    t("连线模式：弯道 remap 不丢形状、重复点击不误撤、草稿可撤回、没攒够不给提交", () => {
       const bad = [];
       const savedTool = tool, savedSel = sel;
       try {
@@ -10049,7 +11855,7 @@ function selfTest() {
           fst.lines = [];
           const at = map.latLngToContainerPoint([fst.lat, fst.lng]);
           const back = map.containerPointToLatLng({ x: at.x + 2, y: at.y - 2 });
-          if (findNearStation(back, null, true) && findNearStation(back, null, true).id !== fid) bad.push("连线模式下没认领住游离站");
+          if (!findNearStation(back, null, true) || findNearStation(back, null, true).id !== fid) bad.push("连线模式下没认领住游离站");
           const free = findNearStation(back, null, false);
           if (free && free.id === fid) bad.push("加站模式开始收游离站了（会改变原有合并语义）");
         } finally { fst.lines = keepLines; }
@@ -10058,9 +11864,11 @@ function selfTest() {
         linkPush(ids[0]); linkPush(ids[1]);
         if (linkChain.length !== 2) bad.push("链长度应为 2，实为 " + linkChain.length);
         linkPush(ids[0]);
-        if (linkChain.length !== 2) bad.push("重复点同一个站被收进了链（一条线不能重复经过）");
+        if (linkChain.length !== 2) bad.push("不足三站却闭合或重复收站");
         linkPush(ids[1]);
-        if (linkChain.length !== 1 || linkChain[0] !== ids[0]) bad.push("再点链尾没撤回这一步：" + linkChain.join(","));
+        if (linkChain.length !== 2) bad.push("重复点链尾误撤了连接");
+        linkUndoStep();
+        if (linkChain.length !== 0) bad.push("撤一步没清掉仅有的一段连接：" + linkChain.join(","));
         const card = document.getElementById("linkCard");
         if (!card || !card.innerHTML) bad.push("连线卡片没渲染（用户看不到自己攒了哪几站）");
         else {
@@ -10085,8 +11893,313 @@ function selfTest() {
         linkReset(); setTool(savedTool === "link" ? "select" : savedTool); sel = savedSel; renderAll();
       }
       return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
-        "弯道 remap：A>B 拆成 A>X / X>B（along 线性重映射、脏条目丢弃、老 key 删除），多站插入贴两端；孤儿 key 负对照成立；链可攒可撤、重复站被拒、切工具即清空；两处守卫都没动数据" };
+        "弯道 remap：A>B 拆成 A>X / X>B（along 线性重映射、脏条目丢弃、老 key 删除），多站插入贴两端；孤儿 key 负对照成立；重复点击不误撤，撤一步清除最后一段，切工具即清空；两处守卫都没动数据" };
     });
+    t("连线两阶段：布置站可见并保存，拖线不改坐标，空白松手/取消/切工具恢复地图拖动", () => {
+      const bad = [];
+      const saved = { p: P, sel, tool, mode: linkMode, chain: linkChain.slice(), closed: linkClosed,
+        drag: linkDrag, steps: linkSteps.slice(), suppress: linkSuppressClickUntil, hist: hist.slice(), future: future.slice(),
+        dirty, owner: dirtyOwner, pan: map.dragging.enabled(), merge: settings.mergeNear, px: settings.mergePx };
+      const check = (ok, msg) => { if (!ok) bad.push(msg); };
+      try {
+        linkReset(); P = synthProject(0, 0); sel = { line: null, station: null }; hist = []; future = [];
+        settings.mergeNear = true; settings.mergePx = 24;
+        setTool("link"); linkSetMode("place"); linkSuppressClickUntil = 0;
+        const size = map.getSize(), cx = size.x / 2, cy = size.y / 2;
+        const points = [[cx - 100, cy - 60], [cx, cy + 65], [cx + 100, cy - 60], [cx - 160, cy + 75]]
+          .map(([x, y]) => map.containerPointToLatLng({ x, y }));
+        const ids = points.map((ll) => { linkSuppressClickUntil = 0; return linkAddPoint(ll); });
+        check(ids.every((id) => !!station(id)), "布置车站没有创建有效 ID");
+        check(Object.keys(P.stations).length === 4 && P.lines.length === 0 && hist.length === 4,
+          "布置四站应只建四站、记录四笔历史，不能自动成线");
+        check(ids.every((id) => station(id) && station(id).placed && !station(id).lines.length),
+          "布置站未保留 placed 标记或已意外归入线路");
+        renderAll();
+        const visible = collectVisible().map((v) => v.st.id);
+        check(ids.every((id) => visible.includes(id) && stnPool[id] && layerStn.hasLayer(stnPool[id])),
+          "布置站存在于数据中却没有可见圆点");
+        check(ids.every((id) => stnPool[id] && stnPool[id].options.draggable), "布置阶段的圆点不能拖动调整位置");
+        const h = synthProject(1, 1), hidden = h.lines[0], hiddenId = "link_hidden_station";
+        hidden.visible = false; hidden.stations = [hiddenId]; P.lines.push(hidden);
+        P.stations[hiddenId] = { id: hiddenId, name: "隐藏线路站", lat: points[0].lat + .05,
+          lng: points[0].lng + .05, lines: [hidden.id], note: "" };
+        check(!collectVisible().some((v) => v.st.id === hiddenId), "显示无线站时把隐藏线路的站也显示了");
+        pruneOrphans();
+        check(ids.every((id) => !!station(id)), "整理线路引用时删除了正式布置的无线站");
+        linkSuppressClickUntil = 0;
+        const beforeNear = snapshot(), nearHist = hist.length;
+        linkAddPoint(points[0]);
+        check(snapshot() === beforeNear && hist.length === nearHist, "布置阶段点击已有站又新建了一站或多记历史");
+        linkSetMode("connect"); settings.mergeNear = false;
+        const testPan = map.dragging.enabled();
+        const before = snapshot(), beforeHist = hist.length, beforeFuture = JSON.stringify(future);
+        const coords = ids.map((id) => { const s = station(id); return s && [s.lat, s.lng]; });
+        const blank = map.containerPointToLatLng({ x: cx, y: cy - 170 });
+        linkSuppressClickUntil = 0; linkAddPoint(blank);
+        check(snapshot() === before && hist.length === beforeHist, "拖线阶段点击空白仍会创建车站");
+        check(linkBeginDrag(ids[0], points[0]), "从已布置车站不能开始拖线");
+        check(!map.dragging.enabled(), "拖线时地图平移没有暂停");
+        linkMoveDrag(points[1]);
+        check(linkDrag && linkDrag.target === ids[1], "自动合并关闭时不能命中明确拖向的目标站");
+        check(linkEndDrag(points[1]) && linkChain.join(",") === ids.slice(0, 2).join(","), "第一段拖线没有按 A→B 加入草稿");
+        check(map.dragging.enabled() === testPan, "有效拖线松手后地图平移状态未恢复");
+        check(linkBeginDrag(ids[1], points[1]) && !linkEndDrag(points[0]) && !linkClosed,
+          "只有两站的连接却能闭合成环");
+        check(linkBeginDrag(ids[1], points[1]) && linkEndDrag(points[2]), "从链尾继续拖线失败");
+        check(linkChain.join(",") === ids.slice(0, 3).join(","), "连续拖线 A→B→C 的站序错误");
+        const chainBefore = linkChain.join(",");
+        check(linkBeginDrag(ids[0], points[0]) && linkEndDrag(points[3]) &&
+          linkChain.join(",") === [ids[3]].concat(ids.slice(0, 3)).join(","), "从链首续接 D 没有形成 D→A→B→C");
+        linkUndoStep();
+        check(linkChain.join(",") === chainBefore && !linkClosed, "首端续接撤一步误删链尾 C，未恢复 A→B→C");
+        check(!linkBeginDrag(ids[1], points[1]) && linkChain.join(",") === chainBefore,
+          "从链中间分叉被误收进一条连续线路");
+        check(linkBeginDrag(ids[2], points[2]) && !linkEndDrag(blank), "空白松手应拒绝这次拖线");
+        check(linkChain.join(",") === chainBefore && !linkDrag && map.dragging.enabled() === testPan,
+          "空白松手改了草稿或没有恢复地图平移");
+        check(linkBeginDrag(ids[2], points[2]) && !linkEndDrag(null), "画布外松手应取消这次拖线");
+        check(linkChain.join(",") === chainBefore && !linkDrag && map.dragging.enabled() === testPan,
+          "画布外松手丢了已有连接或留下拖动锁");
+        check(linkBeginDrag(ids[2], points[2]), "取消手势用例没有启动");
+        linkCancelDrag();
+        check(!linkDrag && linkChain.join(",") === chainBefore && map.dragging.enabled() === testPan,
+          "取消手势误删已有草稿或未恢复地图平移");
+        check(linkBeginDrag(ids[2], points[2]), "Ctrl+Z 取消手势用例没有启动");
+        undo();
+        check(!linkDrag && linkChain.join(",") === chainBefore && hist.length === beforeHist && snapshot() === before &&
+          map.dragging.enabled() === testPan, "拖线未松手时 Ctrl+Z 应只取消手势，不能撤掉已有连接或正式布置站");
+        check(linkBeginDrag(ids[2], points[2]) && linkEndDrag(points[0]) && linkClosed && linkChain.join(",") === chainBefore,
+          "尾站拖回首站没有闭环，或重复加入了首站");
+        linkUndoStep();
+        check(!linkClosed && linkChain.join(",") === chainBefore, "闭环撤一步没有仅取消闭合边");
+        map.dragging.disable();
+        check(linkBeginDrag(ids[2], points[2]) && !linkEndDrag(null) && !map.dragging.enabled(),
+          "地图本来禁用时，结束拖线却擅自启用了平移");
+        if (testPan) map.dragging.enable();
+        check(snapshot() === before && hist.length === beforeHist && JSON.stringify(future) === beforeFuture,
+          "拖线草稿、拒绝或取消触碰了正式图纸/历史");
+        check(ids.every((id, i) => station(id).lat === coords[i][0] && station(id).lng === coords[i][1]),
+          "拖线改变了起点或目标站的坐标");
+        check(linkBeginDrag(ids[2], points[2]), "切工具用例没有启动手势");
+        setTool("select");
+        check(!linkDrag && !linkChain.length && !linkClosed && map.dragging.enabled() === testPan,
+          "切工具未清连接草稿/手势，或地图平移仍锁住");
+        check(snapshot() === before && hist.length === beforeHist && ids.every((id) => !!station(id)),
+          "切工具删除了已布置的正式车站或写入历史");
+        // 负对照：旧版过滤掉所有无线站，必须被同一可见性断言识别。
+        const oldVisible = Object.values(P.stations).filter((s) => stationLines(s).length).map((s) => s.id);
+        check(ids.some((id) => !oldVisible.includes(id)), "无线站可见性负对照没有区分力");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        linkReset(); P = saved.p; sel = saved.sel; hist = saved.hist; future = saved.future;
+        dirty = saved.dirty; dirtyOwner = saved.owner; settings.mergeNear = saved.merge; settings.mergePx = saved.px;
+        setTool(saved.tool); linkMode = saved.mode; linkChain = saved.chain; linkClosed = saved.closed;
+        linkDrag = saved.drag; linkSteps = saved.steps; linkSuppressClickUntil = saved.suppress;
+        if (saved.pan) map.dragging.enable(); else map.dragging.disable();
+        if (saved.drag && saved.drag.pointerId != null) {
+          document.addEventListener("pointermove", linkPointerMove, { passive: false });
+          document.addEventListener("pointerup", linkPointerUp); document.addEventListener("pointercancel", linkPointerCancel);
+          window.addEventListener("blur", linkPointerCancel);
+        }
+        renderAll(); renderLinkPreview();
+      }
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        "布置四站各一笔历史，无线站可见且可调整；隐藏站仍隐藏；双端续接/撤步、闭环/撤闭合均保持准确站序；拖线与取消不改坐标/图纸/历史，松手及切工具恢复地图平移并保留布置站；旧无线站过滤负对照成立" };
+    });
+
+    t("连线提交：新建与并入各只记一次撤销，undo/redo 完整往返，失败不写图纸", () => {
+      const bad = [];
+      const saved = { p: P, sel, tool, mode: linkMode, chain: linkChain.slice(), closed: linkClosed,
+        drag: linkDrag, steps: linkSteps.slice(), suppress: linkSuppressClickUntil, hist: hist.slice(), future: future.slice(),
+        dirty, owner: dirtyOwner, pan: map.dragging.enabled() };
+      const check = (ok, msg) => { if (!ok) bad.push(msg); };
+      const fixture = () => {
+        linkReset(); P = synthProject(6, 3); sel = { line: P.lines[0].id, station: null }; hist = []; future = [];
+        setTool("link"); linkSetMode("connect"); renderAll();
+      };
+      try {
+        fixture();
+        const beforeNew = snapshot(), n = P.lines.length;
+        ["x0", "x1", "x2"].forEach(linkPush);
+        check(linkCommitNewLine(), "三站连接不能新建线路");
+        const afterNew = snapshot(), newLine = activeLine();
+        check(hist.length === 1 && !future.length && P.lines.length === n + 1,
+          "新建线路提交没有恰好一笔历史");
+        check(newLine && newLine.stations.join(",") === "x0,x1,x2" && !newLine.loop,
+          "新建线路没有保持连接站序");
+        check(["x0", "x1", "x2"].every((id) => station(id).lines.includes(newLine.id)),
+          "新建线路没有建立车站归属引用");
+        undo(); check(snapshot() === beforeNew && !hist.length && future.length === 1,
+          "新建线路撤销一次没回到提交前，可能残留空线");
+        redo(); check(snapshot() === afterNew && hist.length === 1 && !future.length,
+          "新建线路重做一次没有恢复整笔提交");
+        fixture();
+        const beforeAppend = snapshot(), lid = activeLine().id;
+        ["x0", "x3", "x1"].forEach(linkPush);
+        check(linkCommitAppend(), "沿已有 x0→x3 再延长到 x1 不能并入");
+        const afterAppend = snapshot();
+        check(hist.length === 1 && activeLine().stations.join(",") === "x0,x3,x1",
+          "并入把点击的连续路径筛乱了，或历史不止一步");
+        check(station("x1").lines.includes(lid) && station("x1").lines.includes("y1"),
+          "并入没有保留复用车站原有的换乘归属");
+        undo(); check(snapshot() === beforeAppend && !hist.length && future.length === 1,
+          "并入撤销一次没有恢复完整站序和车站归属");
+        redo(); check(snapshot() === afterAppend && hist.length === 1 && !future.length,
+          "并入重做一次没有恢复完整提交");
+        linkReset(); ["x2", "x5"].forEach(linkPush);
+        const beforeReject = snapshot(), rejectHist = JSON.stringify(hist), rejectFuture = JSON.stringify(future);
+        check(!linkCommitAppend(), "没有当前线路锚点却并入成功");
+        check(snapshot() === beforeReject && JSON.stringify(hist) === rejectHist && JSON.stringify(future) === rejectFuture,
+          "被拒绝的并入动了数据或历史");
+        linkReset(); linkChain = ["missing_station", "x0"];
+        check(!linkCommitNewLine() && !linkCommitAppend(), "不存在的站 ID 能被提交进线路");
+        check(snapshot() === beforeReject && JSON.stringify(hist) === rejectHist && JSON.stringify(future) === rejectFuture,
+          "不存在的站被拒绝后仍修改了图纸或历史");
+        fixture();
+        const ring = activeLine(), closeKey = bendKey("x1", "x0"), leftKey = bendKey("x1", "x2"), rightKey = bendKey("x2", "x0");
+        ring.stations = ["x0", "x3", "x1"]; ring.loop = true;
+        if (!station("x1").lines.includes(ring.id)) station("x1").lines.push(ring.id);
+        ring.bends = { [closeKey]: [{ along: .25, normal: .3 }, { along: .75, normal: -.2 }] };
+        const beforeRing = snapshot(), oldRing = JSON.parse(JSON.stringify(ring));
+        ["x1", "x2", "x0"].forEach(linkPush);
+        check(linkCommitAppend(), "不能在环线末站→首站的闭合边插站");
+        const afterRing = snapshot(), insertedRing = activeLine();
+        check(insertedRing.loop && insertedRing.stations.join(",") === "x0,x3,x1,x2" && hist.length === 1,
+          "环线闭合边插站的站序、环线位或历史错误");
+        check(!(closeKey in insertedRing.bends) &&
+          JSON.stringify(insertedRing.bends[leftKey]) === JSON.stringify([{ along: .5, normal: .3 }]) &&
+          JSON.stringify(insertedRing.bends[rightKey]) === JSON.stringify([{ along: .5, normal: -.2 }]),
+          "闭合边原弯道没有 remap 到末站→新站/新站→首站");
+        const shape = lineShape(insertedRing, (st) => map.latLngToContainerPoint([st.lat, st.lng]));
+        check(shape.segs.filter((s) => bendKey(s.a, s.b) === leftKey || bendKey(s.a, s.b) === rightKey)
+          .filter((s) => Array.isArray(s.bend) && s.bend.length === 1).length === 2, "渲染形状未读到拆开闭合边后的两份弯道");
+        undo(); check(snapshot() === beforeRing, "闭合边插站撤销一次没有还原原闭合弯道");
+        redo(); check(snapshot() === afterRing, "闭合边插站重做一次没有还原两段弯道");
+        // 负对照：旧 at===length 只读 stations[at]，b 为 undefined，因此留下孤儿闭合边 key。
+        oldRing.stations.splice(oldRing.stations.length, 0, "x2");
+        check(closeKey in oldRing.bends && !(leftKey in oldRing.bends) && !(rightKey in oldRing.bends),
+          "闭合边 b=undefined 的弯道遗失负对照失效");
+        fixture();
+        const existingLoop = activeLine(); existingLoop.stations = ["x0", "x1", "x2"];
+        P = normalize(P); renderAll();
+        const beforeExistingLoop = snapshot();
+        ["x0", "x1", "x2", "x0"].forEach(linkPush);
+        check(linkClosed && linkCommitAppend() && activeLine().loop && hist.length === 1 &&
+          activeLine().stations.join(",") === "x0,x1,x2", "沿已有线路全部站闭合草稿后不能一笔并入成环");
+        const afterExistingLoop = snapshot();
+        undo(); check(snapshot() === beforeExistingLoop, "并入已有线闭环撤销一次没有恢复普通线");
+        redo(); check(snapshot() === afterExistingLoop, "并入已有线闭环重做一次没有恢复环线");
+        fixture();
+        ["x0", "x1", "x2", "x0"].forEach(linkPush);
+        check(linkClosed && linkChain.join(",") === "x0,x1,x2", "拖回首站闭环时站序重复列了首站");
+        linkUndoStep(); check(!linkClosed && linkChain.join(",") === "x0,x1,x2", "闭环撤一步误删末站");
+        linkPush("x0");
+        const beforeLoop = snapshot();
+        check(linkCommitNewLine() && activeLine().loop && activeLine().stations.join(",") === "x0,x1,x2" && hist.length === 1,
+          "闭环线路提交没有保持三个独立站及一笔历史");
+        undo(); check(snapshot() === beforeLoop, "闭环提交撤销一次不能回到提交前");
+        // 负对照：旧双历史行为的一次撤销会留下空线路，本组断言必须能看见差异。
+        const oldUndo = JSON.parse(beforeNew); oldUndo.lines.push({ id: "negative_empty_line", stations: [] });
+        check(JSON.stringify(oldUndo) !== beforeNew && oldUndo.lines.some((l) => l.id === "negative_empty_line" && !l.stations.length),
+          "双历史残留空线的负对照失效");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        linkReset(); P = saved.p; sel = saved.sel; hist = saved.hist; future = saved.future;
+        dirty = saved.dirty; dirtyOwner = saved.owner;
+        setTool(saved.tool); linkMode = saved.mode; linkChain = saved.chain; linkClosed = saved.closed;
+        linkDrag = saved.drag; linkSteps = saved.steps; linkSuppressClickUntil = saved.suppress;
+        if (saved.pan) map.dragging.enable(); else map.dragging.disable();
+        if (saved.drag && saved.drag.pointerId != null) {
+          document.addEventListener("pointermove", linkPointerMove, { passive: false });
+          document.addEventListener("pointerup", linkPointerUp); document.addEventListener("pointercancel", linkPointerCancel);
+          window.addEventListener("blur", linkPointerCancel);
+        }
+        renderAll(); renderLinkPreview();
+      }
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        "新建/并入只存提交前一份快照，撤销重做完整恢复线路及换乘归属；闭合边插站保留两份 remap 弯道及渲染；闭环不重复首站；失败不写；双历史空线和旧闭合边弯道遗失负对照成立" };
+    });
+
+    t("连线并入规划：双向端点延长、相邻插段、首尾闭环；拒绝跨站/分叉/多处插入，有旧算法负对照", () => {
+      const bad = [];
+      const saved = { p: P, sel, tool, mode: linkMode, chain: linkChain.slice(), closed: linkClosed,
+        drag: linkDrag, steps: linkSteps.slice(), suppress: linkSuppressClickUntil, hist: hist.slice(), future: future.slice(),
+        dirty, owner: dirtyOwner, pan: map.dragging.enabled() };
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      const continuous = (seq, path, loop) => path.slice(1).every((id, i) => seq.some((a, j) =>
+        (a === path[i] && seq[j + 1] === id) || (a === id && seq[j + 1] === path[i]) ||
+        (loop && j === seq.length - 1 && ((a === path[i] && seq[0] === id) || (a === id && seq[0] === path[i])))));
+      const cases = [
+        ["末端延长", ["a", "b", "c"], ["c", "x", "y"], ["a", "b", "c", "x", "y"], false],
+        ["反向接末端", ["a", "b", "c"], ["y", "x", "c"], ["a", "b", "c", "x", "y"], false],
+        ["首端向外", ["a", "b", "c"], ["a", "x", "y"], ["y", "x", "a", "b", "c"], false],
+        ["新站接首端", ["a", "b", "c"], ["x", "y", "a"], ["x", "y", "a", "b", "c"], false],
+        ["沿旧路径延长", ["a", "b", "c"], ["b", "c", "x"], ["a", "b", "c", "x"], false],
+        ["相邻插段", ["a", "b", "c"], ["a", "x", "y", "b"], ["a", "x", "y", "b", "c"], false],
+        ["反向相邻插段", ["a", "b", "c"], ["b", "y", "x", "a"], ["a", "x", "y", "b", "c"], false],
+        ["末首插段闭环", ["a", "b", "c"], ["c", "x", "y", "a"], ["a", "b", "c", "x", "y"], true],
+        ["反向首尾闭环", ["a", "b", "c"], ["a", "y", "x", "c"], ["a", "b", "c", "x", "y"], true],
+        ["已有站直接闭环", ["a", "b", "c"], ["c", "a"], ["a", "b", "c"], true],
+        ["环线闭合边插站", ["a", "b", "c"], ["c", "x", "a"], ["a", "b", "c", "x"], true, true],
+        ["两站线只插段", ["a", "b"], ["a", "x", "b"], ["a", "x", "b"], false],
+        ["连续前缀消除重复锚点", ["a", "b", "c", "b", "d"], ["a", "b", "x", "c"], ["a", "b", "x", "c", "b", "d"], false]
+      ];
+      const rejects = [
+        ["中间站分叉", ["a", "b", "c"], ["b", "x"]],
+        ["单锚点两侧分叉", ["a", "b", "c"], ["x", "b", "y"]],
+        ["跨过已有站", ["a", "b", "c", "d"], ["a", "x", "c"]],
+        ["一次多处插段", ["a", "b", "c"], ["a", "x", "b", "y", "c"]],
+        ["不连续旧路径", ["a", "b", "c", "d"], ["a", "c", "d", "x"]],
+        ["重复站锚点歧义", ["a", "b", "c", "b", "d"], ["b", "x", "c"]],
+        ["没有目标线站", ["a", "b", "c"], ["x", "y"]],
+        ["已连接原段", ["a", "b", "c"], ["a", "b"]],
+        ["两站闭环不足", ["a", "b"], ["b", "a"]],
+        ["环线没有端点", ["a", "b", "c"], ["c", "x"], true]
+      ];
+      try {
+        cases.forEach(([name, old, path, expected, loop, oldLoop]) => {
+          const l = { stations: old.slice(), loop: !!oldLoop }, before = JSON.stringify(l), originalPath = JSON.stringify(path);
+          const plan = planLinkAppend(l, path);
+          if (JSON.stringify(l) !== before || JSON.stringify(path) !== originalPath) bad.push(name + "：纯规划修改了输入");
+          if (!plan.ok) { bad.push(name + "：应收却拒绝，" + plan.reason); return; }
+          const result = old.slice(); result.splice(plan.at, 0, ...plan.ids);
+          if (!same(result, expected) || plan.loop !== loop) bad.push(name + "：结果 " + result.join(",") + "/loop=" + plan.loop);
+          if (!continuous(result, path, plan.loop)) bad.push(name + "：并入后丢失点击路径中的相邻边");
+        });
+        rejects.forEach(([name, old, path, loop]) => {
+          const l = { stations: old.slice(), loop: !!loop }, before = JSON.stringify(l), plan = planLinkAppend(l, path);
+          if (plan.ok || !plan.reason || JSON.stringify(l) !== before) bad.push(name + "：应拒绝且保留输入");
+        });
+        // 负对照使用修复前的 indexOf + filter + splice，必须被连续路径断言打红。
+        const oldAppend = (old, path) => {
+          let at = old.indexOf(path[0]);
+          if (at < 0) at = old.indexOf(path[1]) - 1;
+          const added = path.slice(path[0] === old[at] ? 1 : 0).filter((id) => !old.includes(id));
+          const result = old.slice(); result.splice(at + 1, 0, ...added); return result;
+        };
+        let caught = 0;
+        [["b", "c", "x"], ["x", "b", "y"], ["a", "x", "c"]].forEach((path) => {
+          if (!continuous(oldAppend(["a", "b", "c", "d"], path), path, false)) caught++;
+        });
+        if (caught !== 3) bad.push("旧 filter 算法的三个负对照仅识别了 " + caught + " 个");
+      } catch (e) { bad.push("异常：" + e.message); }
+      finally {
+        linkReset(); P = saved.p; sel = saved.sel; hist = saved.hist; future = saved.future;
+        dirty = saved.dirty; dirtyOwner = saved.owner;
+        setTool(saved.tool); linkMode = saved.mode; linkChain = saved.chain; linkClosed = saved.closed;
+        linkDrag = saved.drag; linkSteps = saved.steps; linkSuppressClickUntil = saved.suppress;
+        if (saved.pan) map.dragging.enable(); else map.dragging.disable();
+        if (saved.drag && saved.drag.pointerId != null) {
+          document.addEventListener("pointermove", linkPointerMove, { passive: false });
+          document.addEventListener("pointerup", linkPointerUp); document.addEventListener("pointercancel", linkPointerCancel);
+          window.addEventListener("blur", linkPointerCancel);
+        }
+        renderAll(); renderLinkPreview();
+      }
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
+        cases.length + " 组正确站序与路径连续性、" + rejects.length + " 组歧义/无变化拒绝，规划不改输入；旧 indexOf+filter 三个错误路径均被负对照识别" };
+    });
+
     t("开机铭牌延后一帧：最终画面与一趟画完逐字节相同、按住那趟不碰求解器、兜底 flush 真能补上铭牌", () => {
       const bad = [];
       const mapEl = document.getElementById("map");
@@ -10325,7 +12438,10 @@ function selfTest() {
     R.push({ name: "自检本身异常", ok: false, detail: e.message, ms: 0 });
   } finally {
     inSelfTest = false;
+    navClose(); linkReset();
     P = savedP; sel = savedSel; settings = JSON.parse(savedSettings);
+    tool = savedLink.tool; linkMode = savedLink.mode; linkChain = savedLink.chain; linkClosed = savedLink.closed; linkSteps = savedLink.steps;
+    $$("#tSelect,#tAdd,#tLink").forEach((b) => b.classList.toggle("is-on", b.dataset.tool === tool));
     hist = savedHist; future = savedFuture; updateHistoryButtons();
     if (selfTrace) { try { localStorage.removeItem(K_TRACE); } catch (e) {} }
     clearMarkerPools();
@@ -10379,6 +12495,8 @@ function selfTest() {
     /* renderMap 只修画布：跑测试时 renderAll 会把左侧列表和右侧检查器换成合成图纸的
        内容，收尾只重画地图就留下一屏假数据（选中一条不存在的线路、属性表单是合成站的）。 */
     renderAll();
+    fillProjSelect();
+    navRestore(savedNav);
     /* 自检里的写失败演练会把指示灯打成 error，收尾必须按真实状态改回来，
        否则用户关掉对话框看到的是"未保存!"这种假警报。 */
     setSaveState(dirty ? "dirty" : "saved");

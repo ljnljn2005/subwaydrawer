@@ -1,0 +1,9 @@
+pinyin-pro 3.29.4
+Project: https://github.com/zh-lx/pinyin-pro
+Source: https://registry.npmjs.org/pinyin-pro/-/pinyin-pro-3.29.4.tgz
+License: MIT; see pinyin-pro.LICENSE.txt.
+
+pinyin-pro.js is the unmodified package/dist/index.js UMD bundle.
+The browser API is window.pinyinPro.pinyin(text, { toneType: "none" }).
+It supplies offline romanization for optional English metro announcements.
+User-provided station.nameEn and line.nameEn take precedence.

@@ -5,6 +5,9 @@
   "description": "在真实地图瓦片上绘制地铁线路图的单文件应用（双击即用 + 局域网存档）",
   "scripts": {
     "check": "node scratch/syntax.js",
+    "test:link": "node scratch/link-plan.js",
+    "test:nav": "node scratch/nav-plan.js && node scratch/nav-playback-test.js",
+    "test:speech": "node scratch/nav-speech-test.js && node scratch/speech-name-test.js",
     "sync": "node scratch/sync.js",
     "start": "node server.mjs"
   },
