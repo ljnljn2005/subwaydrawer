@@ -32,6 +32,8 @@ jobs:
         run: npm run test:nav
       - name: Check announcements
         run: npm run test:speech
+      - name: Check curve editing and exports
+        run: npm run test:curve
       - name: Build static application
         run: npm run build:pages
       - name: Configure Pages

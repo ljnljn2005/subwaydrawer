@@ -440,6 +440,7 @@ select.basemap:focus{outline:none;border-color:#3D4C63}
   box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:grab;transition:transform .1s;
 }
 .handle:hover{transform:scale(1.18)}
+.handle:not(.handle--new){border-radius:50%;font-size:12px}
 .handle--new{
   background:rgba(255,255,255,.55);color:rgba(12,16,23,.55);
   border:1px dashed rgba(255,176,32,.9);font-size:10px;box-shadow:0 1px 3px rgba(0,0,0,.35);
@@ -1753,27 +1754,55 @@ function bendHandle(A, B, bend) {
 /* 弯道点存的是"相对弦长的比例"（along / normal），所以端点被拖远时
    曲线跟着按比例拉伸，不跑形 —— 借 rmp 的 chord-relative 思路。
    一条段可以有 0 个（保持直线）、1 个（圆弧）或多个（S 形）弯道点。 */
+function curveCubics(points) {
+  /* 向心 Catmull-Rom 按点距求切线，避免密集弯点附近回钩。
+     同一组 Bezier 控制点供地图与导出使用，并精确经过弯道点。 */
+  const p = points.filter((v, i) => !i || v.x !== points[i - 1].x || v.y !== points[i - 1].y);
+  const out = [];
+  for (let i = 0; i + 1 < p.length; i++) {
+    const A = p[i], B = p[i + 1];
+    const prev = p[i - 1] || { x: 2 * A.x - B.x, y: 2 * A.y - B.y };
+    const next = p[i + 2] || { x: 2 * B.x - A.x, y: 2 * B.y - A.y };
+    const d0 = Math.sqrt(Math.hypot(A.x - prev.x, A.y - prev.y)) || 1e-9;
+    const d1 = Math.sqrt(Math.hypot(B.x - A.x, B.y - A.y)) || 1e-9;
+    const d2 = Math.sqrt(Math.hypot(next.x - B.x, next.y - B.y)) || 1e-9;
+    const tangent = (axis) => ({
+      a: d1 * ((A[axis] - prev[axis]) / d0 - (B[axis] - prev[axis]) / (d0 + d1) + (B[axis] - A[axis]) / d1),
+      b: d1 * ((B[axis] - A[axis]) / d1 - (next[axis] - A[axis]) / (d1 + d2) + (next[axis] - B[axis]) / d2)
+    });
+    const tx = tangent("x"), ty = tangent("y");
+    out.push({ A, C1: { x: A.x + tx.a / 3, y: A.y + ty.a / 3 },
+      C2: { x: B.x - tx.b / 3, y: B.y - ty.b / 3 }, B });
+  }
+  return out;
+}
+function sampleCubics(curves, per = 14) {
+  if (!curves.length) return [];
+  const out = [curves[0].A];
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  curves.forEach((c) => {
+    const span = Math.hypot(c.C1.x - c.A.x, c.C1.y - c.A.y) +
+      Math.hypot(c.C2.x - c.C1.x, c.C2.y - c.C1.y) + Math.hypot(c.B.x - c.C2.x, c.B.y - c.C2.y);
+    const tolerance = Math.max(1e-12, Math.min(0.16, span * 0.0003));
+    const minimumDepth = Math.ceil(Math.log2(Math.max(1, per)));
+    const flatten = (a, c1, c2, b, depth) => {
+      if (depth >= 12 || (depth >= minimumDepth &&
+        Math.max(distToSeg(c1, a, b), distToSeg(c2, a, b)) <= tolerance)) { out.push(b); return; }
+      const ab = mid(a, c1), bc = mid(c1, c2), cd = mid(c2, b), abc = mid(ab, bc), bcd = mid(bc, cd), m = mid(abc, bcd);
+      flatten(a, ab, abc, m, depth + 1); flatten(m, bcd, cd, b, depth + 1);
+    };
+    flatten(c.A, c.C1, c.C2, c.B, 0);
+  });
+  return out;
+}
 function catmullRom(P, per) {
   if (P.length < 3) return P.slice();
-  const pts = [P[0]].concat(P, [P[P.length - 1]]);
-  const out = [];
-  for (let i = 0; i < pts.length - 3; i++) {
-    const p0 = pts[i], p1 = pts[i + 1], p2 = pts[i + 2], p3 = pts[i + 3];
-    for (let j = 0; j < per; j++) {
-      const t = j / per, t2 = t * t, t3 = t2 * t;
-      out.push({
-        x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
-        y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
-      });
-    }
-  }
-  out.push(P[P.length - 1]);
-  return out;
+  return sampleCubics(curveCubics(P), per);
 }
 function handleToBend(A, B, p) {
   const f = chordFrame(A, B), rx = p.x - A.x, ry = p.y - A.y;
   return {
-    along: clamp((rx * f.ux + ry * f.uy) / f.len, 0.08, 0.92),
+    along: clamp((rx * f.ux + ry * f.uy) / f.len, 0.001, 0.999),
     normal: clamp((rx * f.nx + ry * f.ny) / f.len, -1.6, 1.6)
   };
 }
@@ -1787,10 +1816,10 @@ function lineShape(l, toPx) {
     const A = anchors[i], B = anchors[i + 1];
     const bend = (l.bends || {})[bendKey(ids[i], ids[i + 1])] || [];
     const has = curved(bend);
-    const path = has
-      ? catmullRom([A].concat(bend.map((pt) => bendHandle(A, B, pt)), [B]), 14)
-      : [A, B];
-    segs.push({ i, a: ids[i], b: ids[i + 1], A, B, f: chordFrame(A, B), bend: has ? bend : null, raw: path });
+    const geometryBends = has ? bend.slice().sort((a, b) => a.along - b.along) : [];
+    const cubics = has ? curveCubics([A].concat(geometryBends.map((pt) => bendHandle(A, B, pt)), [B])) : null;
+    const path = has ? sampleCubics(cubics, 14) : [A, B];
+    segs.push({ i, a: ids[i], b: ids[i + 1], A, B, f: chordFrame(A, B), bend: has ? bend : null, cubics, raw: path });
   }
   return { segs, ids, anchors };
 }
@@ -1801,9 +1830,11 @@ function offsetSegs(segs, groups, lid) {
     if (grp && grp.length > 1) {
       const idx = grp.findIndex((e) => e.lid === lid && e.i === s.i);
       const step = Math.max.apply(null, grp.map((e) => e.w)) + 4.5;
-      off = (idx - (grp.length - 1) / 2) * step;
+      off = (idx - (grp.length - 1) / 2) * step * (s.a < s.b ? 1 : -1);
     }
-    return { off, pts: s.raw.map((p) => ({ x: p.x + s.f.nx * off, y: p.y + s.f.ny * off })) };
+    const shift = (p) => ({ x: p.x + s.f.nx * off, y: p.y + s.f.ny * off });
+    return { off, pts: s.raw.map(shift), cubics: s.cubics ? s.cubics.map((c) =>
+      ({ A: shift(c.A), C1: shift(c.C1), C2: shift(c.C2), B: shift(c.B) })) : null };
   });
 }
 /* 拼成连续折线。相邻段偏移不同时，段首点与上段尾点不重合，自然形成错阶；
@@ -1951,6 +1982,11 @@ function bendCount(l) {
   let n = 0;
   for (let i = 0; i + 1 < ids.length; i++) if (curved(b[bendKey(ids[i], ids[i + 1])])) n++;
   return n;
+}
+function flipLineBends(l) {
+  Object.keys(l.bends || {}).forEach((key) => {
+    l.bends[key] = l.bends[key].map((b) => ({ along: b.along, normal: -b.normal }));
+  });
 }
 /* 休眠中的弯道数：键还在、形状也有效，只是那两头不再相邻 */
 function dormantBendCount(l) {
@@ -3440,7 +3476,7 @@ function renderLines(groups) {
     }
     labelObstacles.push(jp);                 // 站名避让的"线路障碍"就是这条画出来的折线
     lineObsPx[l.id] = jp;
-    const common = { lineCap: "round", lineJoin: "round", interactive: false };
+    const common = { lineCap: "round", lineJoin: "round", smoothFactor: 0, interactive: false };
     const ls = lineLayers(l);
     ls.slice(0, -1).forEach((Ly) => {
       specs.push({
@@ -3457,7 +3493,7 @@ function renderLines(groups) {
        不然只能精确命中 6px 宽的色带本身。 */
     specs.push({
       line: l, role: "hit", pane: layerLine, pts,
-      opts: { color: "#000", weight: l.width + 18, opacity: 0.001, interactive: true }
+      opts: { color: "#000", weight: l.width + 18, opacity: 0.001, smoothFactor: 0, interactive: true }
     });
     if (sel.line === l.id) {
       specs.push({
@@ -3489,7 +3525,7 @@ function renderLines(groups) {
     const l = s.line, pick = () => { selectLine(l.id, true); };
     mk.on("click", pick);
     if (s.role === "hit") {
-      mk.on("dblclick", (e) => { L.DomEvent.stopPropagation(e); addBendAt(l, e.latlng); });
+      mk.on("dblclick", (e) => { L.DomEvent.stopPropagation(e); if (tool === "select") addBendAt(line(l.id), e.latlng); });
       mk.on("mouseover", () => { document.body.style.cursor = "pointer"; });
       mk.on("mouseout", () => { document.body.style.cursor = ""; });
     }
@@ -3794,40 +3830,73 @@ function clearHandlePool() {
   Object.keys(handlePool).forEach((id) => dropHandle(handlePool[id]));
   handlePool = {}; handleSig = {};
 }
+function getEditableSeg(lid, key) {
+  const l = line(lid); if (!l) return null;
+  const { segs } = lineShape(l, (st) => map.latLngToContainerPoint([st.lat, st.lng]));
+  const i = segs.findIndex((s) => bendKey(s.a, s.b) === key);
+  if (i < 0) return null;
+  return Object.assign({}, segs[i], { off: offsetSegs(segs, buildCorridorGroups(), lid)[i].off });
+}
+function curveHandleSpots(s, off = 0) {
+  const shift = (p) => ({ x: p.x + s.f.nx * off, y: p.y + s.f.ny * off });
+  const spots = (s.bend || []).map((pt, n) => ({ pt, n, xy: shift(bendHandle(s.A, s.B, pt)) }));
+  /* 新点把手在当前曲线上最空的一段，沿弧长取中点，不再悬在两站弦线上。 */
+  const gaps = s.cubics ? s.cubics.map((c) => sampleCubics([c], 14)) : [s.raw];
+  let best = null;
+  gaps.forEach((pts) => {
+    const lengths = [0];
+    for (let i = 1; i < pts.length; i++) lengths.push(lengths[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    const length = lengths[lengths.length - 1];
+    if (best && best.length >= length) return;
+    const at = length / 2;
+    for (let i = 1; i < pts.length; i++) if (lengths[i] >= at) {
+      const t = (at - lengths[i - 1]) / (lengths[i] - lengths[i - 1] || 1);
+      best = { length, xy: { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t,
+        y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t } }; break;
+    }
+  });
+  if (best && best.length > 18) spots.push({ pt: null, n: -1, xy: shift(best.xy) });
+  return spots;
+}
 function bindHandleDrag(mk, lid, key, slot0, isNew) {
   const redraw = () => { renderLines(buildCorridorGroups()); };
-  /* 线路对象会被撤销/重做整批换掉，所以按 id 现查；弦的两端也现算，
-     这样拖动中途改了站序也不会照着旧坐标算比例。 */
-  const segNow = () => {
-    const l = line(lid); if (!l) return null;
-    const { segs } = lineShape(l, (x) => map.latLngToContainerPoint([x.lat, x.lng]));
-    for (let i = 0; i < segs.length; i++) if (bendKey(segs[i].a, segs[i].b) === key) return segs[i];
-    return null;
-  };
-  let slot = slot0;
+  let draggedPoint = null, origin = null, owner = null, changed = false;
   const writeBend = (arr) => { const l = line(lid); if (!l) return; if (arr.length) l.bends[key] = arr; else delete l.bends[key]; };
-  /* 每次起拖都按"这根把手的身份"归零：池化复用 + 不再每帧 off() 重绑之后，闭包里那个
-     slot 会停在上一次的位置 —— "+" 把手第一趟拖出点后，把 slot 指到了自己刚建的那个点上，
-     第二趟就走进"改现有"分支，于是**同一根 + 永远只能生成一个弯道点**，用户看到的正是
-     "不能再加第二个弯曲点"（双击线路其实还能加，但没人会去点那条又细又黑的线）。 */
-  mk.on("dragstart", () => { pushHistory(); slot = isNew ? -1 : slot0; });
+  mk.on("dragstart", () => {
+    owner = P; changed = false; mk._curveDragging = true;
+    origin = map.latLngToContainerPoint(mk.getLatLng());
+    const l = line(lid);
+    draggedPoint = !isNew && l ? ((l.bends || {})[key] || [])[slot0] : null;
+  });
   mk.on("drag", () => {
-    const l = line(lid), s = segNow();
-    if (!l || !s) return;
+    const l = line(lid), s = getEditableSeg(lid, key);
+    if (!origin || P !== owner || !l || !s) return;
+    const p = map.latLngToContainerPoint(mk.getLatLng());
+    if (!changed && Math.hypot(p.x - origin.x, p.y - origin.y) < 2) return;
+    const b = handleToBend(s.A, s.B, { x: p.x - s.f.nx * s.off, y: p.y - s.f.ny * s.off });
+    const arr = ((l.bends || {})[key] || []).slice();
+    if (draggedPoint && !arr.includes(draggedPoint)) return;
+    if (draggedPoint && Math.abs(b.along - draggedPoint.along) < 1e-10 && Math.abs(b.normal - draggedPoint.normal) < 1e-10) return;
+    if (!changed) { pushHistory(); changed = true; }
     if (!l.bends) l.bends = {};
-    const arr = l.bends[key] || (l.bends[key] = []);
-    const b = handleToBend(s.A, s.B, map.latLngToContainerPoint(mk.getLatLng()));
-    if (slot < 0 || slot >= arr.length) {
-      if (Math.abs(b.normal) < 0.006) { redraw(); return; }   // 还没拖离弦线，暂不生成点
-      arr.push(b); arr.sort((x, y) => x.along - y.along); slot = arr.indexOf(b);
-    } else {
-      arr[slot] = b; arr.sort((x, y) => x.along - y.along); slot = arr.indexOf(b);
-      if (Math.abs(b.normal) < 0.006) { arr.splice(slot, 1); slot = -1; }  // 拖回弦线 = 撤销这个点
-    }
+    if (!draggedPoint) { draggedPoint = b; arr.push(draggedPoint); }
+    else { draggedPoint.along = b.along; draggedPoint.normal = b.normal; }
+    /* 起拖到松手保持槽位和对象身份；几何用排序副本，不让重绘换掉把手。 */
     writeBend(arr);
+    const xy = bendHandle(s.A, s.B, draggedPoint);
+    mk.setLatLng(map.containerPointToLatLng({ x: xy.x + s.f.nx * s.off, y: xy.y + s.f.ny * s.off }));
     redraw();
   });
-  mk.on("dragend", () => { markDirty(); renderMap(); renderPanels(); });
+  mk.on("dragend", () => {
+    mk._curveDragging = false;
+    if (changed && P === owner) {
+      const l = line(lid), arr = l && (l.bends || {})[key];
+      if (arr) arr.sort((x, y) => x.along - y.along);
+      markDirty();
+    }
+    origin = null; draggedPoint = null; owner = null; changed = false;
+    renderMap(); renderPanels();
+  });
   mk.on("dblclick", (e) => {
     L.DomEvent.stopPropagation(e);
     if (isNew) return;
@@ -3845,19 +3914,11 @@ function renderHandles() {
   const l = activeLine();
   if (!l || !l.visible || tool !== "select") { sweepHandles(alive); return; }
   const { segs } = lineShapePx(l);
+  const groups = buildCorridorGroups();
   segs.forEach((s) => {
     const key = bendKey(s.a, s.b);
-    const list = (l.bends || {})[key] || [];
-    const spots = list.map((pt, n) => ({ pt, n, xy: bendHandle(s.A, s.B, pt) }));
-    /* 每段再常驻一个"+"把手，落在沿向上最空的一段中点（含两端）。
-       已经有点的段也照样给，否则加第 3 个点就只能靠双击线路、毫无提示。 */
-    const alongs = [0].concat(list.map((p) => p.along), [1]);
-    let gA = 0, gB = 1, gMax = -1;
-    for (let i = 0; i < alongs.length - 1; i++) {
-      const g = alongs[i + 1] - alongs[i];
-      if (g > gMax) { gMax = g; gA = alongs[i]; gB = alongs[i + 1]; }
-    }
-    if (gMax > 0.12) spots.push({ pt: null, n: -1, xy: bendHandle(s.A, s.B, { along: (gA + gB) / 2, normal: 0 }) });
+    const offset = offsetSegs([s], groups, l.id)[0].off;
+    const spots = curveHandleSpots(s, offset);
     spots.forEach((spot) => {
       const isNew = spot.pt === null;
       const id = hk(l.id, key, isNew ? "+" : "b" + spot.n);
@@ -3868,16 +3929,18 @@ function renderHandles() {
         mk = L.marker(map.containerPointToLatLng(spot.xy), {
           icon: L.divIcon({
             className: "handle-wrap",
-            html: '<span class="' + sig + '">+</span>',
+            html: '<span class="' + sig + '">' + (isNew ? "+" : "•") + '</span>',
             iconSize: [14, 14], iconAnchor: [7, 7]
           }),
-          draggable: true, interactive: true, keyboard: false, zIndexOffset: 950, title: ""
+          draggable: true, interactive: true, keyboard: false, zIndexOffset: 950,
+          title: isNew ? "拖动这里增加弯道点" : "拖动调整曲线；双击删除这个弯道点"
         }).addTo(layerHandle);
         mk._handleEl = mk._icon ? mk._icon.querySelector(".handle") : null;
         bindHandleDrag(mk, l.id, key, spot.n, isNew);
         markAt(mk, map.containerPointToLatLng(spot.xy));
         handlePool[id] = mk; handleSig[id] = sig;
       } else {
+        if (mk._curveDragging) return;
         /* 把手 marker 是稳定的（实测同一帧序列里既不重建也不摘除），所以同样能按
            "经纬度没变就不写"跳过。只碰落位，不碰下面那套每帧 off()/bind 的事件重绑 ——
            那个另有断言盯着（"监听不叠加"），要改得先把它一起想清楚。 */
@@ -3900,7 +3963,7 @@ function renderHandles() {
 }
 function sweepHandles(alive) {
   Object.keys(handlePool).forEach((id) => {
-    if (alive[id]) return;
+    if (alive[id] || handlePool[id]._curveDragging) return;
     dropHandle(handlePool[id]);
     delete handlePool[id]; delete handleSig[id];
   });
@@ -3913,18 +3976,24 @@ function distToSeg(p, a, b) {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 function addBendAt(l, latlng) {
+  l = l && line(l.id);
+  if (!l || tool !== "select") return false;
   const { segs } = lineShape(l, (s) => map.latLngToContainerPoint([s.lat, s.lng]));
   if (!segs.length) { toast("这条线路还没有站间段", "bad"); return false; }
   const p = map.latLngToContainerPoint(latlng);
+  const os = offsetSegs(segs, buildCorridorGroups(), l.id);
   let best = null;
-  segs.forEach((s) => {
-    for (let j = 0; j < s.raw.length - 1; j++) {
-      const d = distToSeg(p, s.raw[j], s.raw[j + 1]);
-      if (!best || d < best.d) best = { d, s };
+  segs.forEach((s, i) => {
+    const pts = os[i].pts;
+    for (let j = 0; j < pts.length - 1; j++) {
+      const d = distToSeg(p, pts[j], pts[j + 1]);
+      if (!best || d < best.d) best = { d, s, off: os[i].off };
     }
   });
-  const b = handleToBend(best.s.A, best.s.B, p);
+  if (!best) return false;
+  const b = handleToBend(best.s.A, best.s.B, { x: p.x - best.s.f.nx * best.off, y: p.y - best.s.f.ny * best.off });
   const key = bendKey(best.s.a, best.s.b);
+  if (((l.bends || {})[key] || []).some((pt) => Math.hypot((pt.along - b.along) * best.s.f.len, (pt.normal - b.normal) * best.s.f.len) < 3)) return false;
   pushHistory();
   if (!l.bends) l.bends = {};
   const arr = (l.bends[key] || []).concat([b]).sort((x, y) => x.along - y.along);
@@ -4821,9 +4890,10 @@ function inspLine(l) {
     '<p style="margin:7px 0 0;font-size:11px;color:var(--text-dim);line-height:1.7">双色点线对应大小交路 / 快慢车；并排间距按本走廊最粗线路 +4.5px 自动分配，缩放时保持恒定屏幕距离。闭合环线要求至少 3 站，站序本身不变，只是末站接回首站。</p></div>' +
 
     '<div class="insp-sec"><h4>曲线<em></em>' + (bendCount(l) ? '<span style="color:var(--signal)">' + bendCount(l) + " 处</span>" : "") + "</h4>" +
-    '<p style="margin:0 0 9px;font-size:11.5px;color:var(--text-mid);line-height:1.8">选中这条线路后，每个站间段都会有一个 <b style="color:var(--signal)">+</b> 把手：<b style="color:var(--text)">拖出去</b>把该段拉成圆弧，<b style="color:var(--text)">拖回弦线</b>自动撤销该点，<b style="color:var(--text)">双击把手</b>删除。同一段可反复加好几个点拉出 S 形或多弯，一个都不加就是笔直直线；也可直接<b style="color:var(--text)">双击线路任意位置</b>就地插点。</p>' +
+    '<button class="tool" data-cmd="editCurves"' + (l.stations.length < 2 ? ' disabled' : '') + '>调整曲线</button>' +
+    '<p style="margin:8px 0 9px;font-size:11.5px;color:var(--text-mid);line-height:1.8">点击“调整曲线”，从线路上的 <b style="color:var(--signal)">+</b> 拖出弯道；拖动橙色圆点，曲线会经过你放置的位置。同一段可加多个点画 S 形。拖回直线会保留圆点，<b style="color:var(--text)">双击圆点</b>才删除；也可双击线路添加点。“翻到另一侧”只改变弯曲方向，不改变点的前后位置。</p>' +
     '<div class="row-btns"><button class="tool" data-cmd="straighten"' + (bendCount(l) ? "" : " disabled") + ">全部改直</button>" +
-    '<button class="tool" data-cmd="flipBends">反转所有弯</button></div></div>' +
+    '<button class="tool" data-cmd="flipBends">翻到另一侧</button></div></div>' +
 
     '<div class="insp-sec"><h4>统计<em></em></h4><div class="stat-grid">' +
     '<div class="stat"><b>' + l.stations.length + "</b><span>车站</span></div>" +
@@ -5155,16 +5225,17 @@ function runCmd(cmd, el) {
     case "delStn": st && confirmDialog("删除车站", "确定删除「" + st.name + "」？它会从所有线路上摘除。", () => deleteStation(st.id)); break;
     case "lineUp": l && reorderLine(P.lines.indexOf(l), -1); break;
     case "lineDown": l && reorderLine(P.lines.indexOf(l), 1); break;
+    case "editCurves":
+      setTool("select"); sel.station = null; renderAll(); toast("拖动线路上的 + 增加弯道，拖动橙色圆点调整；双击圆点删除");
+      break;
     case "straighten":
       if (l && bendCount(l)) { pushHistory(); l.bends = {}; renderAll(); markDirty(); toast("所有曲线已改直"); }
       break;
     case "flipBends":
       if (l && bendCount(l)) {
         pushHistory();
-        Object.keys(l.bends).forEach((k) => {
-          l.bends[k] = (l.bends[k] || []).map((b) => ({ along: 1 - b.along, normal: -b.normal })).sort((a, c) => a.along - c.along);
-        });
-        renderAll(); markDirty(); toast("弯曲方向已反转");
+        flipLineBends(l);
+        renderAll(); markDirty(); toast("曲线已翻到另一侧，弯道点的前后位置保持不变");
       }
       break;
     case "toggleLoop":
@@ -5924,7 +5995,7 @@ function openHelp() {
     '<p style="font-family:var(--font-mono);font-size:12px">1.&nbsp;添加线路 &nbsp;→&nbsp; 2.&nbsp;按 <kbd style="font-family:var(--font-mono);color:var(--signal)">A</kbd> 在地图上依次点各站 &nbsp;→&nbsp; 3.&nbsp;双击站名改名 &nbsp;→&nbsp; 4.&nbsp;靠近已有车站点击即成换乘站</p>' +
     '<p class="tight" style="margin-top:14px;color:var(--text)">环线与曲线：</p>' +
     '<p>选中线路后，右侧检查器「走向」里点<b>闭合成环</b>即可把末站接回首站（站序不变，随时可断开，至少 3 站）。</p>' +
-    '<p><b>曲线：</b>双击线路上<b>任意位置</b>，就在那一点插入一个弯道点；<b>拖动橙色方块把手</b>调弧度，<b>双击把手</b>删除该点。一段可以放好几个弯道点（拉出 S 形），一个都不放就是笔直直线；没加点的段中点有个淡色 <b>+</b> 号，拖它同样能起弯。弯道存的是相对弦长的比例，所以拖动端点时曲线会跟着拉伸而不跑形。</p>' +
+    '<p><b>曲线：</b>在线路属性里点<b>调整曲线</b>，或切到选择工具（V）。拖线路上的 <b>+</b> 增加弯道，拖橙色圆点调整，曲线经过圆点的位置；双击线路也能加点，一段可有多个点。拖回直线保留点，<b>双击圆点</b>删除；<b>翻到另一侧</b>只翻转方向，<b>全部改直</b>移除这条线的弯道。弯道随两端车站一起伸缩，地图与导出共用同一形状。</p>' +
     '<p><b>编号牌：</b>每条可见线路会在它<b>最长又最直的那段色带</b>上挂一块线路色牌子（字色按对比度自动选黑或白），牌面朝线路走向、永远不倒着写；点牌子等于选中这条线。站太密、找不到一段放得下的直带时就不放牌，而不是硬贴一个上去。齿轮面板里可以关掉，导出 SVG 与图上的位置规则一致。</p>' +
     '<p class="tight" style="margin-top:14px;color:var(--text)">站型（北京地铁样式）：</p>' +
     '<p>白底黑环，环色不随线路走 —— 细环是普通站，粗环加 <b>⇄</b> 是换乘站（勾选「出站换乘」箭头转灰），带实心点的是端点站，虚线环代表暂缓开通。线路色体现在色带、图例和站名铭牌的左边框上。</p>' +
@@ -6289,6 +6360,57 @@ function legendSvg(visLines, g, sideX, bottomY, withNote) {
   }).join("");
 }
 
+/* 线路仍以采样点参与避让、编号牌与导航；成果图直接输出真实曲线，
+   放大 SVG 或导出高倍率 PNG 时不再把固定数量的短折线放大成棱角。
+   每站段沿用它自己的走廊偏移，段间错阶用 L 明确保留，不跨站拟合。 */
+function svgRailPath(segs, os, project) {
+  const px = project || ((p) => p);
+  const pair = (p) => { const q = px(p); return q.x.toFixed(3) + " " + q.y.toFixed(3); };
+  let d = "", last = null;
+  os.forEach((s, i) => {
+    if (!s.pts.length) return;
+    const first = s.pts[0];
+    if (!last) d += "M " + pair(first);
+    else if (last.x !== first.x || last.y !== first.y) d += " L " + pair(first);
+    if (s.cubics && s.cubics.length) {
+      s.cubics.forEach((c) => { d += " C " + pair(c.C1) + " " + pair(c.C2) + " " + pair(c.B); });
+    } else if (segs[i] && segs[i].arc) {
+      const seg = segs[i], a = seg.arc;
+      const shift = (p) => ({ x: p.x + seg.f.nx * s.off, y: p.y + seg.f.ny * s.off });
+      const entry = shift(a.entry), exit = shift(a.exit);
+      const center = px(shift(a.center)), edge = px(shift({ x: a.center.x + a.radius, y: a.center.y }));
+      const radius = Math.hypot(edge.x - center.x, edge.y - center.y).toFixed(3);
+      d += " L " + pair(entry) + " A " + radius + " " + radius + " 0 0 " + a.sweep + " " + pair(exit);
+      d += " L " + pair(s.pts[s.pts.length - 1]);
+    } else {
+      for (let j = 1; j < s.pts.length; j++) d += " L " + pair(s.pts[j]);
+    }
+    last = s.pts[s.pts.length - 1];
+  });
+  return d;
+}
+
+/* 自检读取实际输出的 SVG 路径，不能在改用 path 后仍只数旧 polyline，
+   否则“没有任何线路”会被当作“没有站名压线”。浏览器解析 C / A 后按
+   长度取样，检查的就是用户拿到的成果图，而不是另一套近似公式。 */
+function svgRailSamples(svg) {
+  const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+  if (doc.querySelector("parsererror")) throw new Error("SVG XML 无法解析");
+  const paths = Array.from(doc.querySelectorAll("path.rail-path"));
+  if (!paths.length) throw new Error("SVG 没有线路路径，不能进行几何审计");
+  return paths.map((p) => {
+    const length = p.getTotalLength();
+    if (!Number.isFinite(length)) throw new Error("SVG 线路长度无效");
+    const count = Math.max(1, Math.ceil(length / 2));
+    const pts = [];
+    for (let i = 0; i <= count; i++) {
+      const q = p.getPointAtLength(length * i / count);
+      pts.push({ x: q.x, y: q.y });
+    }
+    return pts;
+  });
+}
+
 function buildSVG(scaleW) {
   const pts = Object.values(P.stations).filter((s) => s.lines.length);
   if (!pts.length) throw new Error("图纸为空");
@@ -6356,9 +6478,9 @@ function buildSVG(scaleW) {
     const os = offsetSegs(segs, groups, l.id);
     const jp = joinSegs(os);
     obst.push(jp);
-    const str = jp.map((p) => p.x.toFixed(1) + "," + p.y.toFixed(1)).join(" ");
+    const rail = svgRailPath(segs, os);
     lineLayers(l).forEach((Ly) => {
-      body += '<polyline points="' + str + '" fill="none" stroke="' + Ly.color + '" stroke-width="' + Ly.width + '" stroke-opacity="' + Ly.opacity + '" stroke-linecap="round" stroke-linejoin="round"' + dashOf(Ly.dash) + "/>";
+      body += '<path class="rail-path" d="' + rail + '" fill="none" stroke="' + Ly.color + '" stroke-width="' + Ly.width + '" stroke-opacity="' + Ly.opacity + '" stroke-linecap="round" stroke-linejoin="round"' + dashOf(Ly.dash) + "/>";
     });
     /* 编号牌：和地图同一套锚点规则（最长的又直又同向的带子）。
        顺手把它当作一条"折线障碍"塞给标签求解器，导出的图里站名就会主动绕开牌子。 */
@@ -6441,37 +6563,58 @@ function buildSVG(scaleW) {
      1) 站点投影到墨卡托平面并归一化
      2) 每条边的走向按初始地理方位锁定到最近的罗盘 8 向，站间统一间距 U
      3) 弹簧松弛 + 弱锚定原位置（保持整体格局）+ 非相邻节点斥力（防挤成一团）
-     4) 每条边按 rmp diagonal 的公式画成"一段轴向 + 一段 45°"，尖角按
-        roundCornerFactor 圆角（这里把圆角采样成折线点，好复用堆叠管线）
+     4) 每条边画成"一段轴向 + 一段 45°"，转角使用与两腿相切的真圆弧；
+        样点只供避让和堆叠使用，SVG / PNG 保留精确的圆弧
      5) 走廊堆叠、层栈线型、北京站型、编号牌、图例全部复用
    ============================================================ */
-const SCHEME = { U: 78, R: 13, ITER: 340, PAD: 110, W: 1500 };
+const SCHEME = { U: 78, R: 18, ITER: 340, PAD: 110, W: 1500 };
 function octSnapDir(dx, dy) {
   const k = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   const a = k * Math.PI / 4;
   return { x: Math.cos(a), y: Math.sin(a) };
 }
-/* rmp diagonal：|dx|>=|dy| 时先走水平再转 45°，否则先走垂直；默认偏移 0/0
-   意味着轴向腿在起点、45° 腿收到终点。折角用二次曲线采样成圆角。 */
-function diagPolyline(A, B, r) {
+/* 一条走廊只有一份中心线：从坐标顺序固定的一端计算，反向站序复用其反向，
+   防止同行线路只因建站顺序不同就绕到两个不同的拐角。r 是切角腿长，
+   真圆弧的半径由转角算出；短站段保留两端直腿，不挪动站点。 */
+function diagonalCurve(A, B, r) {
+  if (A.x > B.x || (A.x === B.x && A.y > B.y)) {
+    const f = diagonalCurve(B, A, r), a = f.arc;
+    return { points: f.points.slice().reverse(), arc: a ? {
+      entry: a.exit, exit: a.entry, center: a.center, radius: a.radius,
+      start: a.start + a.angle, angle: -a.angle, sweep: 1 - a.sweep
+    } : null };
+  }
   const dx = B.x - A.x, dy = B.y - A.y;
-  if (Math.abs(dx) < 0.5 || Math.abs(dy) < 0.5) return [A, B];
+  if (Math.abs(dx) < 0.5 || Math.abs(dy) < 0.5) return { points: [A, B], arc: null };
   const horiz = Math.abs(dx) >= Math.abs(dy);
   const C = horiz
     ? { x: B.x - Math.abs(dy) * (dx >= 0 ? 1 : -1), y: A.y }
     : { x: A.x, y: B.y - Math.abs(dx) * (dy >= 0 ? 1 : -1) };
   const lin = Math.hypot(A.x - C.x, A.y - C.y), lout = Math.hypot(B.x - C.x, B.y - C.y);
-  if (!lin || !lout) return [A, B];
+  if (!lin || !lout || !(r > 0)) return { points: [A, B], arc: null };
   const rr = Math.min(r, lin * 0.48, lout * 0.48);
   const P1 = { x: C.x + (A.x - C.x) / lin * rr, y: C.y + (A.y - C.y) / lin * rr };
   const P2 = { x: C.x + (B.x - C.x) / lout * rr, y: C.y + (B.y - C.y) / lout * rr };
+  const ux = (C.x - A.x) / lin, uy = (C.y - A.y) / lin;
+  const vx = (B.x - C.x) / lout, vy = (B.y - C.y) / lout;
+  const turn = Math.acos(clamp(ux * vx + uy * vy, -1, 1));
+  const sign = ux * vy - uy * vx > 0 ? 1 : -1;
+  const radius = rr / Math.tan(turn / 2);
+  const center = { x: P1.x - uy * sign * radius, y: P1.y + ux * sign * radius };
+  const start = Math.atan2(P1.y - center.y, P1.x - center.x), angle = turn * sign;
+  // 相邻样点的最大弓高 0.12 布局单位；成果图不使用这些折线绘制。
+  const step = 2 * Math.acos(clamp(1 - 0.12 / radius, -1, 1));
+  const count = Math.max(4, Math.min(64, Math.ceil(turn / Math.max(1e-6, step))));
   const out = [A, P1];
-  for (let i = 1; i <= 8; i++) {
-    const t = i / 8, mt = 1 - t;
-    out.push({ x: mt * mt * P1.x + 2 * mt * t * C.x + t * t * P2.x, y: mt * mt * P1.y + 2 * mt * t * C.y + t * t * P2.y });
+  for (let i = 1; i < count; i++) {
+    const t = start + angle * i / count;
+    out.push({ x: center.x + Math.cos(t) * radius, y: center.y + Math.sin(t) * radius });
   }
-  out.push(B);
-  return out;
+  out.push(P2, B);
+  return { points: out, arc: { entry: P1, exit: P2, center, radius, start, angle, sweep: sign > 0 ? 1 : 0 } };
+}
+function diagPolyline(A, B, r) {
+  return diagonalCurve(A, B, r).points;
 }
 function layoutSchematic() {
   const lkey = layoutGeoKey();
@@ -6626,26 +6769,34 @@ function layoutSchematicRaw() {
   keys.forEach((k) => pos[k] = { x: nodes[k].x, y: nodes[k].y });
   return pos;
 }
-function schematicShapes(pos) {
+function schematicGeometries(pos) {
   const groups = buildCorridorGroups();
   const shapes = {};
   P.lines.filter((l) => l.visible).forEach((l) => {
     const ids = shapeIds(l);
-    if (ids.length < 2) { shapes[l.id] = ids.map((id) => pos[id]).filter(Boolean); return; }
+    if (ids.length < 2) { shapes[l.id] = { points: ids.map((id) => pos[id]).filter(Boolean), segs: [], os: [] }; return; }
     const anchors = ids.map((id) => ({ x: pos[id].x, y: pos[id].y }));
     const segs = [];
     for (let i = 0; i < anchors.length - 1; i++) {
       const A = anchors[i], B = anchors[i + 1];
-      segs.push({ i, a: ids[i], b: ids[i + 1], A, B, f: chordFrame(A, B), raw: diagPolyline(A, B, SCHEME.R) });
+      const curve = diagonalCurve(A, B, SCHEME.R);
+      segs.push({ i, a: ids[i], b: ids[i + 1], A, B, f: chordFrame(A, B), raw: curve.points, arc: curve.arc });
     }
-    shapes[l.id] = joinSegs(offsetSegs(segs, groups, l.id));
+    const os = offsetSegs(segs, groups, l.id);
+    shapes[l.id] = { points: joinSegs(os), segs, os };
   });
+  return shapes;
+}
+function schematicShapes(pos) {
+  const geometries = schematicGeometries(pos), shapes = {};
+  Object.keys(geometries).forEach((id) => { shapes[id] = geometries[id].points; });
   return shapes;
 }
 function buildSchematicSVG() {
   const pos = layoutSchematic();
   if (!pos) throw new Error("没有可绘制的线路");
-  const shapes = schematicShapes(pos);
+  const geometries = schematicGeometries(pos), shapes = {};
+  Object.keys(geometries).forEach((id) => { shapes[id] = geometries[id].points; });
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   const feed = (p) => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); };
   Object.keys(pos).forEach((k) => feed(pos[k]));
@@ -6675,9 +6826,10 @@ function buildSchematicSVG() {
   P.lines.filter((l) => l.visible).forEach((l) => {
     const pts = shapes[l.id];
     if (!pts || pts.length < 2) return;
-    const str = pts.map((p) => X(p.x).toFixed(1) + "," + Y(p.y).toFixed(1)).join(" ");
+    const geometry = geometries[l.id];
+    const rail = svgRailPath(geometry.segs, geometry.os, (p) => ({ x: X(p.x), y: Y(p.y) }));
     lineLayers(l).forEach((Ly) => {
-      body += '<polyline points="' + str + '" fill="none" stroke="' + Ly.color + '" stroke-width="' + (Ly.width * k).toFixed(2) + '" stroke-opacity="' + Ly.opacity + '" stroke-linecap="round" stroke-linejoin="round"' + dashOf(Ly.dash ? Ly.dash.map((v) => +(v * k).toFixed(2)) : null) + "/>";
+      body += '<path class="rail-path" d="' + rail + '" fill="none" stroke="' + Ly.color + '" stroke-width="' + (Ly.width * k).toFixed(2) + '" stroke-opacity="' + Ly.opacity + '" stroke-linecap="round" stroke-linejoin="round"' + dashOf(Ly.dash ? Ly.dash.map((v) => +(v * k).toFixed(2)) : null) + "/>";
     });
   });
 
@@ -8884,7 +9036,7 @@ function selfTest() {
       }
     });
 
-    t("把手池化：监听不叠加、数量跟着弯道走、拖回弦线能撤销", () => {
+    t("把手池化：监听不叠加、可连续加点、拖过弦线保留点、双击明确删除", () => {
       const l = P.lines[0], savedBends = JSON.stringify(l.bends);
       try {
         l.bends = {}; sel.line = l.id; setTool("select"); renderMap();
@@ -8928,12 +9080,15 @@ function selfTest() {
           if (b1) b1.fire("dblclick");                            // 先删后面那个，索引不串位
         }
         b0.fire("dragstart"); b0.setLatLng(chordMid); b0.fire("drag"); b0.setLatLng(chordMid); b0.fire("drag"); b0.fire("dragend");
+        const retained = (l.bends[key] || []).length === 1;
+        const remaining = handlePool[hk(l.id, key, "b0")];
+        if (remaining) remaining.fire("dblclick");
         const undone = !(key in l.bends) || l.bends[key].length === 0;
         const backToStart = cnt() === before;
-        return { ok: before === expectSpots && afterRenders === before && noDup && created && grew && second && hasB1 && undone && backToStart,
+        return { ok: before === expectSpots && afterRenders === before && noDup && created && grew && second && hasB1 && retained && undone && backToStart,
           detail: "起始 " + before + "/段数 " + expectSpots + " 重渲染后 " + afterRenders + " 监听无叠加 " + noDup +
             " 建点 " + created + " 把手增减 " + grew + " 同一根+再建第二个 " + second + "/b1 " + hasB1 + " along[" + alongs + "]" +
-            " 拖回弦线撤销 " + undone + " 复位 " + backToStart };
+            " 拖过弦线保留 " + retained + " 双击删除 " + undone + " 复位 " + backToStart };
       } finally {
         l.bends = JSON.parse(savedBends);
         clearHandlePool(); renderMap();
@@ -8985,8 +9140,9 @@ function selfTest() {
 
     t("标准线路图导出合法且无 NaN", () => {
       const s = buildSchematicSVG();
-      const ok = s.svg.indexOf("<svg") === 0 && s.svg.lastIndexOf("</svg>") + 6 === s.svg.length && !/NaN|Infinity/.test(s.svg);
-      return { ok, detail: s.w + "×" + s.h + "，" + (s.svg.match(/<polyline/g) || []).length + " 条折线" };
+      const rails = svgRailSamples(s.svg);
+      const ok = s.svg.indexOf("<svg") === 0 && s.svg.lastIndexOf("</svg>") + 6 === s.svg.length && !/NaN|Infinity/.test(s.svg) && rails.length > 0;
+      return { ok, detail: s.w + "×" + s.h + "，" + rails.length + " 条真实线路路径" };
     });
 
     t("存档迁移：v1 补齐字段 / v3 单对象弯道升级为数组且仍然生效", () => {
@@ -9966,8 +10122,8 @@ function selfTest() {
           const cx = +m[1], cy = +m[2], r = +m[3] + 2;
           x0 = Math.min(x0, cx - r); x1 = Math.max(x1, cx + r); y0 = Math.min(y0, cy - r); y1 = Math.max(y1, cy + r);
         });
-        [...svg.matchAll(/<polyline points="([^"]+)"/g)].forEach((m) => {
-          m[1].trim().split(/\s+/).forEach((p) => { const q = p.split(","); x0 = Math.min(x0, +q[0]); x1 = Math.max(x1, +q[0]); y0 = Math.min(y0, +q[1]); y1 = Math.max(y1, +q[1]); });
+        svgRailSamples(svg).forEach((pts) => {
+          pts.forEach((p) => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); });
         });
         /* 铭牌：按锚点与实量宽推出矩形 */
         [...svg.matchAll(/<text class="lbl" x="([-\d.]+)" y="([-\d.]+)" text-anchor="(start|end|middle)"[^>]*font-size="(\d+)"[^>]*>([^<]*)<\/text>/g)].forEach((m) => {
@@ -9979,8 +10135,8 @@ function selfTest() {
       };
       const onLine = (svg) => {
         const segs = [];
-        [...svg.matchAll(/<polyline points="([^"]+)"/g)].forEach((m) => {
-          const pts = m[1].trim().split(/\s+/).map((p) => p.split(",").map(Number));
+        svgRailSamples(svg).forEach((sampled) => {
+          const pts = sampled.map((p) => [p.x, p.y]);
           for (let i = 0; i < pts.length - 1; i++) segs.push([pts[i], pts[i + 1]]);
         });
         let n = 0;
