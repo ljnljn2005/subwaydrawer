@@ -1,0 +1,9 @@
+# 应用的字节数与 srcLen 是"加载的是哪一版"的指纹，绝不允许换行转换动它
+*.html text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.css  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.site text eol=lf
+*.png  binary

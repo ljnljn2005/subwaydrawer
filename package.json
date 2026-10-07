@@ -1,0 +1,14 @@
+{
+  "name": "subway-map-studio",
+  "private": true,
+  "version": "0.0.0",
+  "description": "在真实地图瓦片上绘制地铁线路图的单文件应用（双击即用 + 局域网存档）",
+  "scripts": {
+    "check": "node scratch/syntax.js",
+    "sync": "node scratch/sync.js",
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

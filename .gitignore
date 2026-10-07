@@ -1,0 +1,18 @@
+# 秘密与用户数据：绝不入库
+.archive-key
+saves/
+
+# 构建产物（由 `npm run sync` 从根目录生成）
+# 本地图纸及 Pages 构建产物不上传
+dist/index.html
+dist/vendor/
+dist/data/
+.pages-site/
+
+# 临时备份（补丁脚本留下的 *.bak.html 体积大且可再生）
+scratch/*.bak.html
+
+# 系统杂项
+Thumbs.db
+.DS_Store
+desktop.ini
