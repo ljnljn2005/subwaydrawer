@@ -1,7 +1,7 @@
 /* scratch/syntax.js — 语法/体积闸：把 index.html 里所有内联 <script> 用 vm 编译一遍，
    再报字节数、断言条数、LAST_INLINE 指纹。改完文件先跑它，别直接上浏览器。 */
-const fs = require("fs"), vm = require("vm");
-const p = process.argv[2] || "D:/Coding/subwaydrawer/index.html";
+const fs = require("fs"), vm = require("vm"), path = require("path");
+const p = process.argv[2] || path.resolve(__dirname, "..", "index.html");
 const src = fs.readFileSync(p, "utf8");
 const bytes = Buffer.byteLength(src, "utf8");
 const blocks = [...src.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);

@@ -917,6 +917,8 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 /* ============================================================
    2. 本地存储
    ============================================================ */
+/* 仅静态发布产物加入此标记；本地文件与 Node 服务仍保留原来的存档行为。 */
+const STATIC_HOST = !!document.querySelector('meta[name="subwaystudio-hosting"][content="static"]');
 const NS = "subwaystudio.v1";
 const K_REG = NS + ".registry";
 const K_SET = NS + ".settings";
@@ -6015,7 +6017,7 @@ function importJson(file) {
    每个 key 只导一次（记在 subwaystudio.v1.seeds 里）：用户删掉某张种子图后不该刷回来。 */
 const K_SEEDS = NS + ".seeds";
 let lastSeedId = null;
-function seedsAllowed(protocol, runningSelfTest) { return !runningSelfTest && /^https?:$/.test(String(protocol || "")); }
+function seedsAllowed(protocol, runningSelfTest, staticHost = STATIC_HOST) { return !staticHost && !runningSelfTest && /^https?:$/.test(String(protocol || "")); }
 async function loadServerSeeds() {
   if (!seedsAllowed(location.protocol, inSelfTest)) return 0;
   let list;
@@ -6057,11 +6059,11 @@ async function loadServerSeeds() {
    两边漂了以服务端 bad_name 为准。这条不是安全边界，是体验边界。 */
 let archAutoTimer = null, archLastAudit = "未跑";
 function archAllowedFor(protocol) { return /^https?:$/.test(String(protocol == null ? "" : protocol)); }
-function archAvailable() { return archAllowedFor(location.protocol); }
+function archAvailable() { return !STATIC_HOST && archAllowedFor(location.protocol); }
 /* 自动上传该不该发生，抽成纯函数：同步断言没法等 2.5 秒的防抖，
    而"自检期间绝不推"这条一旦写散在 if 里就迟早被人改错。 */
-function archAutoAllowed(cfg, protocol, runningSelfTest) {
-  return !!(cfg && cfg.archKey) && !!cfg.archAuto && archAllowedFor(protocol) && !runningSelfTest;
+function archAutoAllowed(cfg, protocol, runningSelfTest, staticHost = STATIC_HOST) {
+  return !staticHost && !!(cfg && cfg.archKey) && !!cfg.archAuto && archAllowedFor(protocol) && !runningSelfTest;
 }
 function archNameOk(raw) {
   const n = String(raw == null ? "" : raw);
@@ -6075,6 +6077,7 @@ function archDefaultName() {
   return base || "图纸";
 }
 function archFetch(path, opt) {
+  if (!archAvailable()) return Promise.reject(new Error(STATIC_HOST ? "静态网页没有局域网存档服务" : "本机双击打开时没有同源后端"));
   const o = Object.assign({ cache: "no-store" }, opt || {});
   /* 口令必须编码后再进 header：HTTP 头只允许 latin-1，用户随手输一个中文口令时
      裸写会让 fetch 直接抛 "String contains non ISO-8859-1 code point" —— 表现是
@@ -6091,7 +6094,7 @@ async function archProbe() {
   try { const r = await archFetch("/api/ping"); const j = await r.json(); return !!(j && j.ok && j.archive); } catch (e) { return false; }
 }
 async function archPush(name, text) {
-  if (!archAvailable()) return { ok: false, error: "本机双击打开时没有同源后端" };
+  if (!archAvailable()) return { ok: false, error: STATIC_HOST ? "静态网页没有局域网存档服务；请导出 JSON 备份" : "本机双击打开时没有同源后端" };
   if (!archNameOk(name)) return { ok: false, error: "存档名不合法（1-64 字，不能以点开头、不能有 / \\）" };
   if (!String(settings.archKey || "")) return { ok: false, error: "还没填存档口令" };
   try {
@@ -6146,7 +6149,7 @@ function queueArchivePush() {
   }, 2500);
 }
 function openArchive() {
-  if (!archAvailable()) { toast("局域网存档要在 http(s) 地址下打开才能用（现在是你双击的文件）", "bad"); return; }
+  if (!archAvailable()) { toast(STATIC_HOST ? "静态网页的图纸保存在当前浏览器，可导出 JSON 备份" : "局域网存档要在 http(s) 地址下打开才能用（现在是你双击的文件）", "bad"); return; }
   dialog(
     '<div class="modal-h"><b>局域网存档</b><button class="x js-close">✕</button></div>' +
     '<div class="modal-b">' +
@@ -6199,7 +6202,7 @@ function openArchive() {
     });
 }
 async function runArchiveAudit(box) {
-  if (!archAvailable()) { box.innerHTML = '<p class="sto-note">局域网存档审计跳过：现在是你双击打开的文件（file://），没有同源后端。</p>'; archLastAudit = "跳过(file://)"; return; }
+  if (!archAvailable()) { box.innerHTML = '<p class="sto-note">局域网存档审计跳过：' + (STATIC_HOST ? '静态网页没有存档服务，可导出 JSON 备份。' : '现在是你双击打开的文件（file://），没有同源后端。') + '</p>'; archLastAudit = STATIC_HOST ? "跳过(静态网页)" : "跳过(file://)"; return; }
   box.innerHTML = '<p class="sto-note">存档审计跑着呢…（会真的往服务器写一份探针档再删掉）</p>';
   const bad = [];
   const probeName = "自检探针-" + Date.now().toString(36);
@@ -7022,6 +7025,10 @@ function bindKeys() {
    18. 顶部 / 侧栏控件绑定
    ============================================================ */
 function bindChrome() {
+  if (STATIC_HOST) {
+    const archiveButton = $("#tArchive");
+    archiveButton.hidden = true; archiveButton.disabled = true; archiveButton.style.display = "none";
+  }
   $("#tSelect").addEventListener("click", () => setTool("select"));
   $("#tAdd").addEventListener("click", () => setTool("add"));
   $("#tLink").addEventListener("click", () => setTool("link"));
@@ -11747,7 +11754,7 @@ function selfTest() {
         "4 条加密底图 / 8 条非加密标注无误；偏移量级 482·556·622·364 m 对上；境外 0 m；用户实测坐标对校准误差 " + e1 + "·" + e2 + " m；" +
         "7 km 跨度内极差 " + (hi - lo).toFixed(1) + " m（近恒定 ⇒ 可按图中心一档平移）；负对照 4/4 命中且已还原" };
     });
-    t("局域网存档判据：名字规则、只在 http(s) 可用、自动上传的四道闸、入口都接上了", () => {
+    t("局域网存档判据：名字规则、http(s) 服务、静态网页不取种子或自动上传、入口都接上了", () => {
       const bad = [];
       /* 名字规则：允许中文与空格（用户真的就叫"廊坊地铁"），挡住空、超长、以点开头、
          含 .. 、斜杠反斜杠、控制字符。服务端才是权威，客户端这份只负责提前给准信 ——
@@ -11764,11 +11771,14 @@ function selfTest() {
       if (!loose("about:") || archAllowedFor("about:")) bad.push("负对照失效：宽松写法与本判据在 about: 上没差别");
       /* 自动上传四道闸：开关、口令、协议、自检中。每一道单独关掉都必须拦住。 */
       const ON = { archAuto: true, archKey: "k" };
-      if (!archAutoAllowed(ON, "http:", false)) bad.push("四道全开却被拦住");
-      if (archAutoAllowed({ archAuto: false, archKey: "k" }, "http:", false)) bad.push("开关关了还放行");
-      if (archAutoAllowed({ archAuto: true, archKey: "" }, "http:", false)) bad.push("没口令还放行");
-      if (archAutoAllowed(ON, "file:", false)) bad.push("双击打开还放行");
-      if (archAutoAllowed(ON, "http:", true)) bad.push("自检进行中还放行");
+      if (!archAutoAllowed(ON, "http:", false, false)) bad.push("四道全开却被拦住");
+      if (archAutoAllowed({ archAuto: false, archKey: "k" }, "http:", false, false)) bad.push("开关关了还放行");
+      if (archAutoAllowed({ archAuto: true, archKey: "" }, "http:", false, false)) bad.push("没口令还放行");
+      if (archAutoAllowed(ON, "file:", false, false)) bad.push("双击打开还放行");
+      if (archAutoAllowed(ON, "http:", true, false)) bad.push("自检进行中还放行");
+      if (archAutoAllowed(ON, "https:", false, true)) bad.push("静态网页还放行自动上传");
+      if (seedsAllowed("https:", false, true)) bad.push("静态网页还取服务器种子");
+      if (!seedsAllowed("https:", false, false)) bad.push("普通 HTTPS 服务的种子被关闭");
       /* 入口接线：工具条按钮、面板两个动作、保存成功后的挂钩都得真在 */
       if (typeof openArchive !== "function" || typeof runArchiveAudit !== "function" || typeof archProbe !== "function") bad.push("存档入口缺件");
       const btn = document.getElementById("tArchive");
@@ -11777,6 +11787,7 @@ function selfTest() {
         const label = (btn.textContent || "").trim() || btn.getAttribute("title") || btn.getAttribute("aria-label") || "";
         if (!label) bad.push("存档按钮是个哑巴（无文字也无 title）");
         if (btn.getAttribute("data-cmd") !== "archive") bad.push("存档按钮没接到 archive 命令：" + btn.getAttribute("data-cmd"));
+        if (STATIC_HOST && (!btn.hidden || !btn.disabled || archAvailable())) bad.push("静态网页还提供不可用的存档入口");
       }
       if (typeof persistProject !== "function") bad.push("找不到 persistProject，保存挂钩无处可挂");
       /* 时间戳闸门：导入/种子档常缺 updatedAt，直接 new Date(undefined) 会在状态栏
@@ -11797,14 +11808,14 @@ function selfTest() {
         settings.archAuto = true; settings.archKey = "自检口令"; settings.archAutoName = "自检-不该上传";
         queueArchivePush();
         if (archAutoTimer !== timer0) bad.push("inSelfTest 为真却排下了自动上传的定时器");
-        const isIn = inSelfTest, onNet = archAllowedFor(location.protocol);
+        const isIn = inSelfTest, onNet = archAvailable();
         try { inSelfTest = false; queueArchivePush();
           /* "四道全开"里的协议这道闸只能在真的联网时才算开：双击打开的页面上它是关的，
              这时排程才是 bug、不排程才是对的（第 51 轮那条教训的同一类：判据要按当前
              交付形态的实际情况立，不能把 http 下的期望强套到 file:// 上）。 */
           if (onNet && archAutoTimer === null) bad.push("四道全开却没排程（挂钩没接上 persistProject 那一侧）");
-          if (!onNet && archAutoTimer !== timer0) bad.push("双击打开的页面上还排了自动上传（协议闸门失效）");
-          archBranch = onNet ? "http(s)：四道全开⇒排程" : "file://：协议关⇒不排程";
+          if (!onNet && archAutoTimer !== timer0) bad.push("没有存档服务的页面上还排了自动上传");
+          archBranch = onNet ? "http(s)：四道全开⇒排程" : (STATIC_HOST ? "静态网页：服务关⇒不排程" : "file://：协议关⇒不排程");
         }
         finally { inSelfTest = isIn; if (archAutoTimer) { clearTimeout(archAutoTimer); archAutoTimer = null; } }
       } finally {
@@ -11813,7 +11824,7 @@ function selfTest() {
       }
       return { ok: !bad.length, detail: bad.length ? bad.slice(0, 3).join("；") :
         "名字 5 收 10 拒（含 .. / 反斜杠 / 控制字符 / 超长）；协议 8 档 + 宽松写法负对照；自动上传四道闸逐道都拦得住；" +
-        "工具条按钮有名字且接 archive 命令；自检中不排程、四道全开才排程（本次走的是 " + archBranch + "），设置用完即还原" };
+        "静态网页不取种子、不自动上传；工具条按发布模式提供存档入口；自检中不排程、服务存在且四道全开才排程（本次走的是 " + archBranch + "），设置用完即还原" };
     });
     t("连线模式：弯道 remap 不丢形状、重复点击不误撤、草稿可撤回、没攒够不给提交", () => {
       const bad = [];

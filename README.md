@@ -14,6 +14,10 @@
 
 ## 使用
 
+在线使用：[GitHub Pages](https://ljnljn2005.github.io/subwaydrawer/)。网站无需安装，包含通用示例图纸；
+你绘制的图纸保存在当前浏览器中，不会上传到 GitHub。请用 JSON 导出备份，再用 JSON 导入迁移到其他设备。
+在线版不提供局域网存档接口。
+
 下载或克隆整个仓库后，直接打开根目录的 `index.html`。请保留旁边的 `vendor/` 目录。
 底图需要联网；选择“无底图（纯图纸）”即可只绘制线路图。语音报站需要浏览器支持系统语音。
 
@@ -41,9 +45,11 @@ npm run test:link
 npm run test:nav
 npm run test:speech
 npm run sync
+npm run build:pages
 ```
 
 用户存档 `saves/`、本地图纸 `dist/data/`、存档口令 `.archive-key` 与可重新生成的构建产物不纳入 Git。
 Pages 部署只包含应用和 `vendor/` 资源；网页中编辑的图纸保存在使用者自己的浏览器里。
+推送到 `main` 后，GitHub Actions 自动检查并发布；`npm run build:pages` 可在本地生成相同的 `.pages-site/` 内容。
 
 Leaflet 与 pinyin-pro 使用本地副本；依赖的许可与来源说明保留在 `vendor/` 中。

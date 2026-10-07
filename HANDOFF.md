@@ -10,7 +10,7 @@
 折角与圆角、共走廊线路自动并排、站名自动避让线路，能存本地、导入导出 JSON、一键生成
 「标准线路图」（RailMapGen 语法的成果图）。
 
-三种用法，都可用：
+四种用法，都可用：
 
 1. **双击 `index.html`**（主交付形态）：零依赖、零构建。Leaflet 走 `vendor/` 本地副本，
    断网也能用；数据存 `localStorage`。
@@ -18,19 +18,21 @@
    启动时打印局域网 IP 与存档口令。
 3. **局域网存档**：同一台机器上的 `/api/save` 口令接口，多台设备共用一份档。
    口令在 `.archive-key`（**不入库**），前端只在用户输入后存进本浏览器 `localStorage`。
+4. **GitHub Pages**：<https://ljnljn2005.github.io/subwaydrawer/>，只发布应用与 vendor 依赖。
+   图纸保存在各自浏览器，可用 JSON 导入导出迁移；静态版隐藏局域网存档入口，不拉取本地图纸、不上传存档。
 
 ## 二、当前快照（2026-10-07）
 
 | 项 | 值 |
 | --- | --- |
-| `index.html` | 846,686 字节，md5 `a40906670661804fafbc3af29e0124cf` |
-| 内置回归套件 | **89/89 通过**（本地 HTTP 服务；语法工具静态计数为 90） |
+| `index.html` | 848,169 字节，md5 `8efa9aaac97c09b63c3c36a1768e462a` |
+| 内置回归套件 | **89/89 通过**（本地 HTTP 与 Pages 静态产物；语法工具静态计数为 90） |
 | 连线专项 | `npm run test:link`：应用里的规划器通过 56 个语义场景，含 3 个旧算法负对照 |
 | 导航专项 | `npm run test:nav`：实际应用的规划器 43 项、播放/几何 56 项通过，含 9 个故障负对照 |
 | 报站专项 | `npm run test:speech`：双语内容/语音队列 58 项、英文名/离线拼音 9 项通过，含 10 个故障负对照；语音引擎为模拟验证 |
 | `server.mjs` | 10,812 字节，md5 `2c12a2c820772cb2524fd93dfe62a5fd` |
 | 用户真档 | `file://` 的廊坊图 18,987 字节；`saves/廊坊地铁.json` 19,823 字节（**都不入库**） |
-| 托管站点 | `subway-map-studio-hh3uu4nu9s6.qoder.zone`，**私有访问（curl 401），且仍是旧构建** |
+| 托管站点 | GitHub Pages：`https://ljnljn2005.github.io/subwaydrawer/`；由 `main` 的 Actions 工作流发布 |
 
 连线现为两阶段：**布置车站 → 从圆点拖线连接 → 确认并入或新建线路**。放站会正式保存并显示
 灰色虚边圆点，可拖动调整位置；连接草稿只读已有站，空白松手、取消、切工具不改车站和线路。
@@ -65,6 +67,8 @@
 
 本轮浏览器实测了拖线，并跑完 HTTP 自检；4 个应用存储键逐字节不变，服务器用户档 SHA256 不变。
 浏览器安全策略禁止打开 `file://`，双击交付仅完成静态语法检查；`dist/` 已同步并逐字节校验。
+Pages 产物仅含 7 个允许发布的文件；HTML 只额外插入静态托管标记。静态适配检查确认零存档请求、
+零自动上传定时器；89/89 浏览器自检通过，两个应用存储键逐字节不变，首次打开为通用滨海市示例。
 
 ## 三、文件地图：谁是源，谁是产物
 
@@ -76,11 +80,14 @@ vendor/pinyin-pro.js     ← 源：pinyin-pro 3.29.4 离线拼音 UMD，附许�
 dist/index.html     ← 产物：由 sync 从根目录复制
 dist/vendor/        ← 产物：同上
 dist/data/          ← 本地预置图纸原件（seeds.json + 具体档），保留本地，禁止入库和部署
+.pages-site/        ← GitHub Pages 构建产物，仅应用与 vendor，不入库
+.github/workflows/pages.yml ← main 推送后检查、构建与发布 GitHub Pages
 saves/              ← 运行时数据：服务器上的用户档（不入库）
 .archive-key        ← 秘密：存档口令（不入库）
 scratch/            ← 开发工具与历史补丁脚本（*.js 入库，*.bak.html 不入库）
   syntax.js         ← 语法/体积闸：把内联 <script> 用 vm 编译一遍 + 报字节/断言数/srcLen
   sync.js           ← 生成 dist/（复制 index.html 与 vendor/，逐字节校验）
+  build-pages.js    ← 按明确允许名单构建静态站点并添加托管标记
   link-plan.js      ← 连线并入规划的补丁源 + 读取实际 index.html 规划器的专项测试
   link-drag.js      ← 两阶段连线、指针手势和草稿提交的补丁源
   link-drag-tests.js ← 三组已嵌入 selfTest 的交互/历史/路径回归源
@@ -130,7 +137,7 @@ scratch/            ← 开发工具与历史补丁脚本（*.js 入库，*.bak.
 
 1. `node scratch/syntax.js` —— 语法闸。它能在碰浏览器之前抓住字符串被截断、括号不配对。
    同时报 `bytes` / `srcLen` / 断言数，用来确认加载的是哪一版。`srcLen` 是全部内联块总和；
-   当前为 652572，最后一块为 652465，浏览器按所有无 src 的 script 求和才可直接比对。
+   当前为 653659，最后一块为 653552，浏览器按所有无 src 的 script 求和才可直接比对。
 2. `npm run sync`（或 `cp index.html dist/index.html`）+ `cmp` 校验。
 3. 浏览器：**先 navigate 一次，下一条消息再 evaluate**（同一条消息里两个浏览器调用会并行，读不到刚加载的页）。
    `file://` 会给缓存的旧副本 ⇒ 必须用 `srcLen` 与磁盘比对自证，不能信"我改了就应该生效"。
@@ -152,8 +159,9 @@ scratch/            ← 开发工具与历史补丁脚本（*.js 入库，*.bak.
   松弛是混沌系统（把 `Math.hypot` 换成 `sqrt` 都会让 1200 个节点漂出 252 位移），
   所以必须重跑"四次松弛字节指纹"与"松弛结果缓存"两条断言。
 - **#60 开机 marker 首建的最后一档收益**：要用户拍板"减数量"还是"降交互性"，不要替用户决定。
-- **云后端 / 重新发布**：站点是私有访问、且仍是旧构建；未经用户授权不得发布或开云资源。
-  前端已有局域网存档客户端（`arch*` 一组函数，判据 `archAutoAllowed` 四道闸）。
+- **云后端**：GitHub Pages 已获用户授权发布，静态版不提供云存档。
+  前端已有局域网存档客户端（`arch*` 一组函数，判据 `archAutoAllowed` 四道闸）；
+  如以后增加云存档，需单独设计用户数据的保存位置与访问方式。
 
 ## 七、踩过的坑（可执行清单）
 
@@ -182,7 +190,10 @@ scratch/            ← 开发工具与历史补丁脚本（*.js 入库，*.bak.
 ## 八、git
 
 - 已 `git init -b main`；`.gitignore` 精确排除 `.archive-key`（口令）、`saves/`（用户档）、
-  `dist/index.html` 与 `dist/vendor/`（产物）、**`dist/data/`（本地图纸原件，禁止上传与部署）**。
+  `dist/index.html`、`dist/vendor/`、`.pages-site/`（产物）、**`dist/data/`（本地图纸原件，禁止上传与部署）**。
+- 公开仓库：<https://github.com/ljnljn2005/subwaydrawer>。曾误传本地图纸，已按用户授权删除仓库并同名重建；
+  新仓库仅推送清理后的 `main`，旧存档提交的已知访问地址验证为 404。本地原件保留。
+  本地备份引用 `refs/codex-backup/before-archive-cleanup` 包含旧历史，**禁止使用 `push --all` 或 `push --mirror`**。
 - 提交前请再确认一次：`git status --short` 里不应出现 `.archive-key` 或 `saves/`。
 - 建议提交节奏：每完成一轮（改动 + 套件全绿 + 两形态验证过）一次提交，
   message 写"改了什么 + 实测数字 + 哪条断言守着它"，不要只写"update"。
