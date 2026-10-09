@@ -6,7 +6,7 @@
   "scripts": {
     "check": "node scratch/syntax.js",
     "test:link": "node scratch/link-plan.js",
-    "test:nav": "node scratch/nav-plan.js && node scratch/nav-playback-test.js",
+    "test:nav": "node scratch/nav-plan.js && node scratch/nav-playback-test.js && node scratch/nav-follow-test.js",
     "test:speech": "node scratch/nav-speech-test.js && node scratch/speech-name-test.js",
     "test:curve": "node scratch/curve-edit-test.js && node scratch/curve-export-test.js",
     "test:labels": "node scratch/zoom-label-test.js",

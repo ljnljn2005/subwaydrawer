@@ -3102,6 +3102,7 @@ function createNavSpeaker(adapter, onComplete) {
 // END NAV ANNOUNCEMENTS
 let nav = null;
 let navProgrammaticView = false;
+let navFollowZooming = false, navFollowSerial = 0, navFollowZoomSerial = 0;
 function navGeometry(plan) {
   const groups = buildCorridorGroups(), geometries = {};
   plan.legs.forEach((leg) => {
@@ -3116,7 +3117,10 @@ function navClearLayers() {
   if (nav.layer) nav.layer.remove();
   nav.layer = null; nav.marker = null;
 }
-function navCancelFrame() { if (nav && nav.raf) { cancelAnimationFrame(nav.raf); nav.raf = 0; } }
+function navCancelFrame() {
+  if (nav && nav.raf) { cancelAnimationFrame(nav.raf); nav.raf = 0; }
+  navCancelFollow();
+}
 function navSilence(keep = false) {
   if (!nav) return;
   if (nav.speaker) { if (keep) nav.speaker.pause(); else nav.speaker.clear(); }
@@ -3154,7 +3158,7 @@ function navSuspend() {
 }
 function navRestore(saved) {
   navClose(); if (!saved) return;
-  nav = saved; nav.lastTime = null; nav.raf = 0; nav.speaking = false;
+  nav = saved; nav.lastTime = null; nav.raf = 0; nav.speaking = false; nav.followInputActive = false; nav.followInputUntil = 0;
   $("#navCard").appendChild(saved.content); delete saved.content;
   $("#navCard").hidden = false; $("#tNavigate").classList.add("is-on");
   navRefreshGeometry(); navRenderState(); navDrawCursor(true); navResumeSpeech(); navScheduleFrame();
@@ -3277,7 +3281,10 @@ function openNavigation() {
   });
   $("#navSpeed").addEventListener("change", () => { navAdvanceClock(performance.now()); if (nav) nav.speed = Number($("#navSpeed").value); });
   $("#navSpeechRate").addEventListener("change", () => { nav.speechRate = Number($("#navSpeechRate").value) || 1; });
-  $("#navFollow").addEventListener("change", () => { nav.follow = $("#navFollow").checked; if (nav.follow) navDrawCursor(true); });
+  $("#navFollow").addEventListener("change", () => {
+    nav.follow = $("#navFollow").checked;
+    if (nav.follow) navDrawCursor(true); else navCancelFollow();
+  });
   $("#navVoice").addEventListener("change", () => {
     nav.voice = $("#navVoice").checked;
     if (!nav.voice) { navSilence(); navScheduleFrame(); }
@@ -3380,12 +3387,69 @@ function navDrawCursor(follow) {
   if (follow && nav.follow && !inSelfTest) navFollowPoint(ll);
 }
 function navFollowPoint(ll) {
-  const size = map.getSize(), point = map.latLngToContainerPoint(ll);
+  if (!nav || !nav.follow) return;
+  nav.followPoint = ll;
+  if (!nav.followPanActive) navFollowPan();
+}
+/* 每段短平移期间只更新目标，接着沿最新车头位置继续平移。
+   不逐帧重启 Leaflet 动画，也不逐帧触发 moveend 重算全部 SVG 路径。 */
+function navFollowPan() {
+  const owner = nav;
+  if (!owner || !owner.follow || !owner.followPoint || owner.followPanActive || owner.followInputActive || performance.now() < (owner.followInputUntil || 0) || document.hidden || navFollowZooming) return;
+  const size = map.getSize(), point = map.latLngToContainerPoint(owner.followPoint);
   const card = $("#navCard"), clearHeight = Math.max(60, size.y - card.offsetHeight - 32);
   const targetY = Math.max(35, clearHeight * .5);
-  if (point.x > size.x * .2 && point.x < size.x * .8 && point.y > 30 && point.y < clearHeight - 10) return;
+  const dx = point.x - size.x * .5, dy = point.y - targetY;
+  if (Math.abs(dx) < .75 && Math.abs(dy) < .75) return;
+  const far = Math.hypot(dx, dy) > Math.max(size.x, clearHeight) * .35;
+  owner.followPanActive = true;
   navProgrammaticView = true; userViewAt = -Infinity;
-  try { map.panBy([point.x - size.x * .5, point.y - targetY], { animate: false }); } finally { navProgrammaticView = false; }
+  try { map.panBy([dx, dy], { animate: true, duration: far ? .4 : .16, easeLinearity: far ? .5 : 1 }); }
+  catch (e) { owner.followPanActive = false; owner.followPoint = null; throw e; }
+  finally { if (!nav || !nav.followPanActive) navProgrammaticView = false; }
+}
+function navFollowEnd() {
+  /* 固定 Leaflet 1.9.4 在 PosAnimation._complete 中先清 _inProgress，再发 end。
+     zoom/resize 也会另发 moveend；动画仍在跑时它们不属于跟随段。 */
+  if (!nav || !nav.followPanActive || (map._panAnim && map._panAnim._inProgress)) return;
+  const owner = nav;
+  owner.followPanActive = false;
+  /* 保护覆盖当前 moveend 的全部监听；视图记账监听注册在本监听后面。
+     暂停/关闭等取消动作会推高序号，旧回调不能清掉新导航的保护。 */
+  const serial = navFollowSerial;
+  queueMicrotask(() => {
+    if (serial !== navFollowSerial || nav !== owner) return;
+    /* Leaflet 的 stop/setView 也会发 moveend；等其调用栈结束再接下一段，
+       避免在 PosAnimation.stop 的 end 监听里递归启动同一动画。 */
+    navFollowPan();
+    if (!owner.followPanActive) navProgrammaticView = false;
+  });
+}
+function navCancelFollow() {
+  navFollowSerial++;
+  const active = nav && nav.followPanActive;
+  if (nav) {
+    if (nav.followZoomTimer) clearTimeout(nav.followZoomTimer);
+    nav.followZoomTimer = 0; nav.followPoint = null; nav.followPanActive = false;
+  }
+  if (active) {
+    navProgrammaticView = true;
+    try { map.stop(); } finally { navProgrammaticView = false; }
+  } else navProgrammaticView = false;
+}
+function navReleaseFollow() {
+  if (nav) { nav.follow = false; $("#navFollow").checked = false; }
+  navCancelFollow();
+}
+function navPauseFollowForZoom() {
+  /* 滚轮有输入合并延迟，按钮缩放也在下一帧才发 zoomstart；先让出镜头。 */
+  if (nav) nav.followInputUntil = performance.now() + 180;
+  navCancelFollow();
+  const owner = nav, serial = navFollowSerial;
+  if (owner) owner.followZoomTimer = setTimeout(() => {
+    if (nav !== owner || serial !== navFollowSerial) return;
+    owner.followZoomTimer = 0; owner.followInputUntil = 0; navDrawCursor(true);
+  }, 180);
 }
 function navUpdateProgress() {
   if (!nav || !nav.playback) { $("#navProgress").value = 0; return; }
@@ -3445,8 +3509,37 @@ function navAnnounce(event) {
   }
 }
 function navBindMap() {
-  map.on("resize", () => { navRefreshGeometry(); navDrawCursor(true); });
-  map.on("dragstart", () => { if (nav && nav.follow && !navProgrammaticView) { nav.follow = false; $("#navFollow").checked = false; } });
+  map.on("moveend", navFollowEnd);
+  map.on("zoomstart", () => { navFollowZooming = true; navFollowZoomSerial++; navCancelFollow(); });
+  map.on("zoomend", () => {
+    const zoomSerial = navFollowZoomSerial, owner = nav, serial = navFollowSerial;
+    /* Leaflet 接着还会发缩放的 moveend，不能让它误结束新跟随段。
+       同步 zoomend 重绘只更新目标，等整个事件栈结束后再启动镜头。 */
+    queueMicrotask(() => {
+      if (zoomSerial !== navFollowZoomSerial) return;
+      navFollowZooming = false;
+      if (nav !== owner || serial !== navFollowSerial || !owner) return;
+      owner.followInputUntil = 0; navDrawCursor(true);
+    });
+  });
+  map.on("resize", () => { navCancelFollow(); navRefreshGeometry(); navDrawCursor(true); });
+  map.on("dragstart", navReleaseFollow);
+  /* 按下地图先让出镜头，拖图时关闭跟随；仅点击/缩放后可继续跟随。 */
+  ["mousedown", "touchstart"].forEach((event) => map.getContainer().addEventListener(event, () => {
+    if (nav) { nav.followInputActive = true; navCancelFollow(); }
+  }, { capture: true, passive: true }));
+  ["mouseup", "touchend", "touchcancel"].forEach((event) => document.addEventListener(event, () => {
+    if (!nav || !nav.followInputActive) return;
+    nav.followInputActive = false; navDrawCursor(true);
+  }, { capture: true, passive: true }));
+  window.addEventListener("blur", () => {
+    if (nav && nav.followInputActive) { nav.followInputActive = false; navCancelFollow(); }
+  });
+  map.getContainer().addEventListener("wheel", navPauseFollowForZoom, { capture: true, passive: true });
+  map.getContainer().addEventListener("keydown", (e) => {
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) navReleaseFollow();
+    else if (["+", "=", "-"].includes(e.key)) navPauseFollowForZoom();
+  }, { capture: true });
   document.addEventListener("visibilitychange", () => {
     if (!nav) return;
     navCancelFrame(); nav.lastTime = null;
@@ -5161,13 +5254,13 @@ function fitAll() {
   const pts = Object.values(P.stations);
   if (!pts.length) { toast("图纸是空的"); return; }
   const b = L.latLngBounds(pts.map((s) => [s.lat, s.lng]));
-  viewByUser(); map.fitBounds(b.pad(0.18));
+  navReleaseFollow(); viewByUser(); map.fitBounds(b.pad(0.18));
 }
 function fitLine(id) {
   const l = line(id || sel.line);
   if (!l || l.stations.length < 1) { toast("该线路还没有车站"); return; }
   const b = L.latLngBounds(linePoints(l));
-  if (b.isValid()) { viewByUser(); map.fitBounds(b.pad(l.stations.length < 3 ? .5 : .2)); }
+  if (b.isValid()) { navReleaseFollow(); viewByUser(); map.fitBounds(b.pad(l.stations.length < 3 ? .5 : .2)); }
 }
 function pruneOrphans() {
   const revIds = visibleLineIndexAll();
@@ -5315,7 +5408,7 @@ function runCmd(cmd, el) {
       setTool("add");
       toast(activeLine() ? "加站模式：点击地图把站加到「" + activeLine().name + "」" : "加站模式：点击地图添加车站，没有选中线路时会自动新建一条线路");
       break;
-    case "gotoStn": if (st) { viewByUser(); map.panTo([st.lat, st.lng], { animate: true }); } break;
+    case "gotoStn": if (st) { navReleaseFollow(); viewByUser(); map.panTo([st.lat, st.lng], { animate: true }); } break;
     case "resetLabel":
       if (st && st.labelOff) { pushHistory(); st.labelOff = null; renderAll(); markDirty(); toast("已交还自动避让"); }
       break;
@@ -5878,7 +5971,7 @@ function bindPanels() {
     if (act === "up") return moveStation(sel.line, idx, -1);
     if (act === "down") return moveStation(sel.line, idx, 1);
     if (act === "ins") return setInsert(sel.line, idx);
-    if (act === "goto") { viewByUser(); return map.panTo([st.lat, st.lng], { animate: true }); }
+    if (act === "goto") { navReleaseFollow(); viewByUser(); return map.panTo([st.lat, st.lng], { animate: true }); }
     selectStation(st.id);
   });
   sl.addEventListener("dblclick", (e) => {
@@ -7265,8 +7358,8 @@ function bindKeys() {
         if (sel.station) deleteStation(sel.station);
         else if (sel.line) deleteLine(sel.line);
         break;
-      case "+": case "=": viewByUser(); map.zoomIn(); break;
-      case "-": viewByUser(); map.zoomOut(); break;
+      case "+": case "=": navPauseFollowForZoom(); viewByUser(); map.zoomIn(); break;
+      case "-": navPauseFollowForZoom(); viewByUser(); map.zoomOut(); break;
       default: return;
     }
     e.preventDefault();
@@ -7298,8 +7391,8 @@ function bindChrome() {
   $("#tExportPng").addEventListener("click", exportPng);
   $("#basemapSel").addEventListener("change", (e) => { settings.basemap = e.target.value; store.set(K_SET, settings); applyBasemap(); });
 
-  $("#zIn").addEventListener("click", () => { viewByUser(); map.zoomIn(); });
-  $("#zOut").addEventListener("click", () => { viewByUser(); map.zoomOut(); });
+  $("#zIn").addEventListener("click", () => { navPauseFollowForZoom(); viewByUser(); map.zoomIn(); });
+  $("#zOut").addEventListener("click", () => { navPauseFollowForZoom(); viewByUser(); map.zoomOut(); });
   $("#zFit").addEventListener("click", () => (sel.line && line(sel.line).stations.length ? fitLine() : fitAll()));
   $("#zGrid").addEventListener("click", () => { settings.showLabels = !settings.showLabels; store.set(K_SET, settings); syncLabelBtn(); renderMap(); toast(settings.showLabels ? "站名标签：开" : "站名标签：关"); });
   syncLabelBtn();
@@ -7608,7 +7701,7 @@ function selfTest() {
         dirty, owner: dirtyOwner, hist: hist.slice(), future: future.slice(), flag: inSelfTest,
         lock: viewLockUntil, intent: userViewAt, armed: viewCommitArmed, programmatic: navProgrammaticView,
         nudgeId, nudgeAt,
-        timeout: window.setTimeout, clearTimeout: window.clearTimeout, panBy: map.panBy,
+        timeout: window.setTimeout, clearTimeout: window.clearTimeout, panBy: map.panBy, microtask: window.queueMicrotask,
         pillState: $("#savePill").dataset.state, pillText: $("#savePill span").textContent, pillTitle: $("#savePill").title,
         navigation: navSuspend() };
       const bad = [], timers = new Map();
@@ -7620,6 +7713,15 @@ function selfTest() {
       const diskBefore = storageBytes();
       let fakeTimer = -1000000, trackedGuard = false, followMoved = false, userControl = false, cleanupControl = false, mergedNudge = false;
       let restoredNodes = 0, suspended = null;
+      const cameraTasks = [];
+      window.queueMicrotask = (callback) => cameraTasks.push(callback);
+      const flushCameraTasks = () => {
+        let steps = 0;
+        while (cameraTasks.length) {
+          if (++steps > 200) throw new Error("镜头完成回调未收敛");
+          cameraTasks.shift()();
+        }
+      };
       // Keep the actual markDirty/view debounce code, but prevent its synthetic
       // callbacks from surviving the synchronous test and writing a user's save.
       window.setTimeout = (callback, delay, ...args) => {
@@ -7632,6 +7734,11 @@ function selfTest() {
       };
       try {
         inSelfTest = true; navProgrammaticView = false; userViewAt = -Infinity; viewLockUntil = Infinity;
+        /* 同步套件只验证交互与真实 moveend 记账链，确定性地完成镜头段。
+           连续动画/异步保护由 test:nav 的虚拟帧时钟独立验证。 */
+        map.panBy = function (offset, options) {
+          return saved.panBy.call(this, offset, navProgrammaticView ? Object.assign({}, options, { animate: false }) : options);
+        };
         P = synthProject(3, 1); P.id = "synth-navigation-ui";
         sel = { line: P.lines[0].id, station: "x0" }; hist = []; future = []; dirty = false; dirtyOwner = null;
         clearMarkerPools(); map.setView(P.center, P.zoom, { animate: false }); renderAll();
@@ -7661,6 +7768,8 @@ function selfTest() {
         check(JSON.stringify(nav.playback) === pausedBytes, "暂停状态仍推进了停站或行车");
         userViewAt = -Infinity;
         map.setZoom(map.getZoom() + 1, { animate: false });
+        // Complete actual zoomend continuations after Leaflet's event stack.
+        flushCameraTasks();
         const pausedPoint = map.latLngToContainerPoint(nav.marker.getLatLng()), pausedSize = map.getSize();
         check(nav.playback.status === "paused" && !nav.raf && pausedPoint.x >= 0 && pausedPoint.x <= pausedSize.x &&
           pausedPoint.y >= 0 && pausedPoint.y <= pausedSize.y, "暂停列车缩放后没有重新跟随到可见范围或意外恢复播放");
@@ -7690,13 +7799,14 @@ function selfTest() {
         check(unchanged(), "暂停/继续/自检挂起恢复改动了图纸或存档");
         const beforeFollow = map.getCenter(), armedBefore = viewCommitArmed;
         map.panBy = function () {
-          trackedGuard = navProgrammaticView;
-          const result = saved.panBy.apply(this, arguments);
+          trackedGuard = navProgrammaticView && arguments[1].animate === true;
+          const result = saved.panBy.call(this, arguments[0], Object.assign({}, arguments[1], { animate: false }));
           commitViewNow(); // Exercise the guard while the synchronous moveend fires.
           return result;
         };
         const size = map.getSize(), far = map.containerPointToLatLng({ x: size.x + 420, y: size.y + 320 });
-        viewByUser(); navFollowPoint(far); map.panBy = saved.panBy;
+        const followingBefore = nav.follow; nav.follow = true;
+        viewByUser(); navFollowPoint(far); navCancelFollow(); nav.follow = followingBefore; map.panBy = saved.panBy;
         const afterFollow = map.getCenter();
         followMoved = map.latLngToContainerPoint(beforeFollow).distanceTo(map.latLngToContainerPoint(afterFollow)) > 100;
         check(followMoved && trackedGuard && !navProgrammaticView && userViewAt === -Infinity,
@@ -7749,7 +7859,7 @@ function selfTest() {
       } catch (e) { bad.push("异常：" + e.message); }
       finally {
         inSelfTest = true; viewLockUntil = Infinity; userViewAt = -Infinity; navProgrammaticView = false;
-        window.setTimeout = saved.timeout; window.clearTimeout = saved.clearTimeout;
+        window.setTimeout = saved.timeout; window.clearTimeout = saved.clearTimeout; window.queueMicrotask = saved.microtask;
         map.panBy = saved.panBy; navClose();
         if (suspended && suspended.content) suspended.content.replaceChildren();
         P = saved.p; sel = saved.sel; tool = saved.tool; pendingInsert = saved.pending;
