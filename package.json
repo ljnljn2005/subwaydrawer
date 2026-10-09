@@ -9,6 +9,7 @@
     "test:nav": "node scratch/nav-plan.js && node scratch/nav-playback-test.js",
     "test:speech": "node scratch/nav-speech-test.js && node scratch/speech-name-test.js",
     "test:curve": "node scratch/curve-edit-test.js && node scratch/curve-export-test.js",
+    "test:labels": "node scratch/zoom-label-test.js",
     "build:pages": "node scratch/build-pages.js",
     "sync": "node scratch/sync.js",
     "start": "node server.mjs"

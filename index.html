@@ -2095,15 +2095,15 @@ function labelWidthsUnchanged() {
 }
 /* 首帧用估算值，渲染后量真实 offsetWidth 并缓存，之后各帧都按实际宽度避让 */
 let labelCacheDirty = false;
-/* 铭牌藏不藏的唯一判据，抽出来是为了能逐格量真值表（常驻断言不必换图纸）。
+/* 通过密度筛选的铭牌再按压线情况裁除，重要站名例外。
    实测（示例图 z10/z11）：换乘站"没有任何一个方位不压线"是它的中位情形（0 个空位），
    普通站是 1~2 个 —— 因为两条线必然在换乘站交汇，附近本来就挤；而两者盒子宽度实测
    同为 58px（⇄ 字形画在站徽里，不在铭牌盒内），所以这不是"换乘的名字太宽塞不下"，
    是几何上无处可放。名字整张消失比铭牌盖过一线更伤：盒子本来就是不透明胶囊（自带
    边框与投影），盖在线上等同于把线压住；SVG/PNG 导出也一直全显不裁。
-   ⇒ 缩放挤到放不下时：普通站按原规则隐藏，换乘站铭牌始终保留。 */
-function labelShouldHide(hitLine, isXfer, cullOn) {
-  return !!hitLine && !isXfer && cullOn !== false;
+   ⇒ 普通候选按压线情况隐藏，换乘、端点和选中站名始终保留。 */
+function labelShouldHide(hitLine, protectedLabel, cullOn) {
+  return !!hitLine && !protectedLabel && cullOn !== false;
 }
 
 function cacheLabelSize(id, marker) {
@@ -2234,10 +2234,15 @@ function pinGridWanted(n) {
   if (pinGridMode === "off") return false;
   return n >= pinGridMin;
 }
-function solveSides(items, obstacles, gap, pinR, hint, fixed) {
+function solveSides(items, obstacles, gap, pinR, hint, fixed, stationPins) {
   const g = gap == null ? 10 : gap;
   const out = {};
   const n = items.length;
+  /* 地图缩小时只排部分站名，但所有可见站点仍是圆点障碍。
+     可选圆点输入独立于铭牌；导出/旧调用不传时，保留原来按下标排除自己的语义。 */
+  const separatePins = stationPins != null;
+  const pins = separatePins ? stationPins : items;
+  const pn = pins.length;
   /* 站点圆点：每个方位都要扫全部 n 个，n=320 时 8×320×320 ≈ 82 万次判定。
      判定本身极便宜，开销全在对象取值上，所以四边直接摊进定长数组。 */
   /* 站点圆点 + 已落定的标签框：n=1200 时全扫是 8×1200×2400 ≈ 2300 万次判定（导出
@@ -2246,16 +2251,26 @@ function solveSides(items, obstacles, gap, pinR, hint, fixed) {
      "最宽标签 + 圆点 + 间隙"外扩，判据保守 ⇒ 一次不漏。窗口靠二分定位，O(log n)。
      计数与暴力版等价：命中几个就加几次同一个常数（先 +120 后 +40），累加序列逐字节
      一样，所以结果仍然可证（自检里的参照实现每次对答案）。 */
-  const px = new Float64Array(n), py = new Float64Array(n), pX = new Float64Array(n), pY = new Float64Array(n);
+  const px = new Float64Array(pn), py = new Float64Array(pn), pX = new Float64Array(pn), pY = new Float64Array(pn);
+  const pinIds = separatePins ? new Array(pn) : null;
+  const labelPx = separatePins ? new Float64Array(n) : px;
   const szArr = new Array(n);
   const d2 = pinR * 2;
   let maxW = 0, maxH = 0;
   for (let k = 0; k < n; k++) {
     const it = items[k];
-    px[k] = it.x - pinR; py[k] = it.y - pinR; pX[k] = px[k] + d2; pY[k] = py[k] + d2;
+    if (separatePins) labelPx[k] = it.x - pinR;
+    else { px[k] = it.x - pinR; py[k] = it.y - pinR; pX[k] = px[k] + d2; pY[k] = py[k] + d2; }
     const sz = szArr[k] = it.size || labelSize(it.text, it.fs || 13.5);
     if (sz.w > maxW) maxW = sz.w;
     if (sz.h > maxH) maxH = sz.h;      // labelRect 的高恒等于 sz.h，占位框不会更高
+  }
+  if (separatePins) {
+    for (let k = 0; k < pn; k++) {
+      const p = pins[k];
+      px[k] = p.x - pinR; py[k] = p.y - pinR; pX[k] = px[k] + d2; pY[k] = py[k] + d2;
+      pinIds[k] = p.id;
+    }
   }
   /* 手动钉住的标签：位置固定，先按左边 x 排好，同样用窗口扫 */
   const seed = fixed || [];
@@ -2276,10 +2291,20 @@ function solveSides(items, obstacles, gap, pinR, hint, fixed) {
   const bx = new Float64Array(n), bX = new Float64Array(n), by = new Float64Array(n), bY = new Float64Array(n);
   const bSet = new Uint8Array(n);
   const pOrd = [];
-  for (let k = 0; k < n; k++) pOrd.push(k);
+  /* 非有限圆点不会与有限铭牌框相交；独立路径先剔掉，避免 NaN 破坏排序后
+     的二分窗口。旧路径仍按原索引和原排序走，保证导出结论不变。 */
+  for (let k = 0; k < pn; k++) { if (!separatePins || (isFinite(px[k]) && isFinite(py[k]))) pOrd.push(k); }
   pOrd.sort((a, b) => px[a] - px[b]);
-  const pxSorted = new Float64Array(n);
-  for (let t = 0; t < n; t++) pxSorted[t] = px[pOrd[t]];
+  const pxSorted = new Float64Array(pOrd.length);
+  for (let t = 0; t < pOrd.length; t++) pxSorted[t] = px[pOrd[t]];
+  const bOrd = separatePins ? [] : pOrd;
+  let labelPxSorted = pxSorted;
+  if (separatePins) {
+    for (let k = 0; k < n; k++) { if (isFinite(labelPx[k]) && isFinite(items[k].y)) bOrd.push(k); }
+    bOrd.sort((a, b) => labelPx[a] - labelPx[b]);
+    labelPxSorted = new Float64Array(bOrd.length);
+    for (let t = 0; t < bOrd.length; t++) labelPxSorted[t] = labelPx[bOrd[t]];
+  }
   const PADW = maxW + d2 + g + g;
   const lowerBound = (arr, v) => { let lo = 0, hi = arr.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] < v) lo = mid + 1; else hi = mid; } return lo; };
   const upperBound = (arr, v) => { let lo = 0, hi = arr.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] <= v) lo = mid + 1; else hi = mid; } return lo; };
@@ -2300,12 +2325,22 @@ function solveSides(items, obstacles, gap, pinR, hint, fixed) {
      退化情形（坐标非有限、格数超上限、标签太少）整块退回原 x 窗口扫描。 */
   let NG = false, NGC = 48, NGW = 0, NGH = 0, NGX0 = 0, NGY0 = 0;
   let ngHeadP = null, ngNextP = null, ngHeadB = null, ngNextB = null;
-  if (pinGridWanted(n)) {
+  if (pinGridWanted(separatePins ? Math.max(n, pn) : n)) {
     let mnX = Infinity, mxX = -Infinity, mnY = Infinity, mxY = -Infinity, sane = n > 0;
-    for (let k = 0; k < n && sane; k++) {
+    for (let k = 0; k < pn && sane; k++) {
       if (!(isFinite(px[k]) && isFinite(py[k]))) { sane = false; break; }
       if (px[k] < mnX) mnX = px[k]; if (pX[k] > mxX) mxX = pX[k];
       if (py[k] < mnY) mnY = py[k]; if (pY[k] > mxY) mxY = pY[k];
+    }
+    /* 独立圆点列表可以为空，也可能没有某张铭牌自己的站点：占位框网格的边界
+       因此还须包含所有铭牌原点。否则 clamp 会把框塞到错误格而漏掉邻居。 */
+    if (separatePins) {
+      for (let k = 0; k < n && sane; k++) {
+        const x = labelPx[k], y = items[k].y - pinR;
+        if (!(isFinite(x) && isFinite(y))) { sane = false; break; }
+        if (x < mnX) mnX = x; if (x + d2 > mxX) mxX = x + d2;
+        if (y < mnY) mnY = y; if (y + d2 > mxY) mxY = y + d2;
+      }
     }
     for (let q = 0; q < seed.length && sane; q++) {
       if (!(isFinite(sl[q]) && isFinite(sb[q]) && isFinite(sr[q]) && isFinite(sB[q]))) sane = false;
@@ -2337,9 +2372,9 @@ function solveSides(items, obstacles, gap, pinR, hint, fixed) {
       if (NGW * NGH > 0 && NGW * NGH <= 60000) {
         pinGridBuilds++;
         const nc = NGW * NGH;
-        ngHeadP = new Int32Array(nc).fill(-1); ngNextP = new Int32Array(n);
+        ngHeadP = new Int32Array(nc).fill(-1); ngNextP = new Int32Array(pn);
         ngHeadB = new Int32Array(nc).fill(-1); ngNextB = new Int32Array(n);
-        for (let k = 0; k < n; k++) {
+        for (let k = 0; k < pn; k++) {
           const c = ngCellOf(px[k], py[k]);
           ngNextP[k] = ngHeadP[c]; ngHeadP[c] = k;
         }
@@ -2544,10 +2579,27 @@ function solveSides(items, obstacles, gap, pinR, hint, fixed) {
           const row = cyy * NGW;
           for (let cxx = hx0; cxx <= hx1; cxx++) {
             for (let t = ngHeadP[row + cxx]; t >= 0; t = ngNextP[t]) {
-              if (t === selfIdx) continue;
+              if (separatePins ? pinIds[t] === it.id : t === selfIdx) continue;
               if (rx0 < pX[t] && px[t] < rx1 && ry0 < pY[t] && py[t] < ry1) cb++;
             }
           }
+        }
+      } else if (separatePins) {
+        /* 两个独立窗口：已落定框按铭牌原点查，圆点按完整站点列表查。
+           原点与框之间用 PADW 保守外扩；圆点只需其直径 d2。 */
+        const w0 = lowerBound(labelPxSorted, rx0 - PADW), w1 = upperBound(labelPxSorted, rx1 + PADW);
+        for (let t = w0; t < w1; t++) {
+          const k = bOrd[t];
+          if (bSet[k] && rx0 < bX[k] && bx[k] < rx1 && ry0 < bY[k] && by[k] < ry1) {
+            score += 120;
+            if (best && score >= best.score) { doomed = true; break; }
+          }
+        }
+        if (doomed) continue;
+        const p0 = lowerBound(pxSorted, rx0 - d2), p1 = upperBound(pxSorted, rx1);
+        for (let t = p0; t < p1; t++) {
+          const k = pOrd[t];
+          if (pinIds[k] !== it.id && rx0 < pX[k] && px[k] < rx1 && ry0 < pY[k] && py[k] < ry1) cb++;
         }
       } else {
         const w0 = lowerBound(pxSorted, rx0 - PADW), w1 = upperBound(pxSorted, rx1 + PADW);
@@ -4141,6 +4193,46 @@ function placeAt(mk, ll) {
   mk.setLatLng(ll); mk._at0 = p[0]; mk._at1 = p[1]; return true;
 }
 function forgetAt(mk) { mk._at0 = NaN; mk._at1 = NaN; }   // NaN 与自身都不等 ⇒ 下一次必写
+function mapLabelPriority(v, selectedId) {
+  return !!(v.xfer || v.term || v.st.labelOff || v.st.id === selectedId);
+}
+/* 总览先减站名，再量字和避让；隐藏站仍保留圆点与线路。
+   Z13 起恢复完整候选，缩小一档逐步增加间距。格网只加速邻居查询，
+   取舍仍按距离和图纸原顺序，平移不会因跨过格边而更换代表站。
+   手动位置只读不改，导出继续使用它自己的完整标签输入。 */
+function selectMapLabels(vis, zoom, selectedId, cullOn) {
+  if (cullOn === false || zoom >= 13 || !Number.isFinite(zoom)) return vis;
+  const gap = Math.min(160, 40 + (12 - zoom) * 24), gap2 = gap * gap;
+  const grid = new Map(), kept = new Set();
+  const add = (v) => {
+    kept.add(v.st.id);
+    const p = v.px;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+    const key = Math.floor(p.x / gap) + "," + Math.floor(p.y / gap);
+    const cell = grid.get(key);
+    if (cell) cell.push(p); else grid.set(key, [p]);
+  };
+  for (const v of vis) if (mapLabelPriority(v, selectedId)) add(v);
+  for (const v of vis) {
+    if (kept.has(v.st.id)) continue;
+    const p = v.px;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) { add(v); continue; }
+    const gx = Math.floor(p.x / gap), gy = Math.floor(p.y / gap);
+    let crowded = false;
+    for (let y = gy - 1; y <= gy + 1 && !crowded; y++) {
+      for (let x = gx - 1; x <= gx + 1 && !crowded; x++) {
+        const cell = grid.get(x + "," + y);
+        if (!cell) continue;
+        for (const q of cell) {
+          const dx = p.x - q.x, dy = p.y - q.y;
+          if (dx * dx + dy * dy < gap2) { crowded = true; break; }
+        }
+      }
+    }
+    if (!crowded) add(v);
+  }
+  return vis.filter((v) => kept.has(v.st.id));
+}
 /* 铭牌的输入构造只此一份：整体跳过的指纹和真正渲染共用同一套 manual/auto/fixed/item，
    两处各写各的，指纹就可能"看着一样而结果不一样"（假命中＝铭牌贴错）。
    itemOf 顺带把实测宽高取好：它既是求解输入，也是指纹的一部分。 */
@@ -4156,15 +4248,15 @@ function buildLabelInputs(vis) {
 /* 两层钥匙：solve = 只喂给求解器的那部分（方位只由它决定）；
    all = solve + 铭牌外观（配色、站型、明暗、可拖性、裁切开关、DOM 代数）。
    all 相同 ⇒ 这一层输出必然相同 ⇒ 整层跳过；只有 solve 相同 ⇒ 复用解，但仍然重排 DOM。 */
-function labelKeysOf(vis, inp, inv, canDrag) {
-  const solve = labelSolveSignature(inp.auto.map(inp.itemOf), inp.fixed, labelObstacles);
+function labelKeysOf(vis, inp, inv, canDrag, pins, total) {
+  const solve = labelSolveSignature(inp.auto.map(inp.itemOf), inp.fixed, labelObstacles, pins);
   let h = 0x811c9dc5 >>> 0;
   const mix = (s) => { for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } };
   for (let i = 0; i < vis.length; i++) {
     const v = vis[i];
-    mix(String(v.st.id) + "|" + String(v.c) + (v.xfer ? 1 : 0) + (v.term ? 1 : 0) + (v.staged ? 1 : 0) + "|" + String(v.size) + ";");
+    mix(String(v.st.id) + "|" + String(v.c) + (v.xfer ? 1 : 0) + (v.term ? 1 : 0) + (v.staged ? 1 : 0) + "|" + String(v.size) + "|name:" + v.st.name.length + ":" + v.st.name + ";");
   }
-  mix("#" + (inv ? 1 : 0) + (canDrag ? 1 : 0) + (settings.cullLabels === false ? 0 : 1) + (settings.showLabels ? 1 : 0) + "@" + labelDomGen + "/" + labelSettling);
+  mix("#" + (inv ? 1 : 0) + (canDrag ? 1 : 0) + (settings.cullLabels === false ? 0 : 1) + (settings.showLabels ? 1 : 0) + "@" + labelDomGen + "/" + labelSettling + "|selected:" + sel.station + "|total:" + total);
   return { solve: solve, all: solve + "#" + h.toString(16) + "/" + vis.length };
 }
 /* 标签单独一个 layer。marker 走对象池复用：每帧 clearLayers + 重建 19 个
@@ -4199,10 +4291,10 @@ const LR_PAD = 20;
    没有任何人往里写。 */
 let lblSig = null, lblOut = null, lblSolveHits = 0, lblSolveMisses = 0;
 let lblKey = null, lblKeyGen = 0, lblSkipHits = 0, lblSkipMisses = 0;
-function labelSolveSignature(items, fixed, obs) {
+function labelSolveSignature(items, fixed, obs, pins) {
   let h = 0x811c9dc5 >>> 0;
   const mix = (s) => { for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } };
-  const num = (n) => { mix(String(n)); };
+  const num = (n) => { mix(":" + String(n) + ";"); };   // 12,3 与 1,23 不能拼成同一串
   const sz = map.getSize();
   mix("lblSolveV1|z"); num(map.getZoom()); mix("|c"); num(sz.x); num(sz.y); mix("|i");
   for (let i = 0; i < items.length; i++) { const it = items[i]; num(it.x); num(it.y); num(it.sz.w); num(it.sz.h); num(it.rank); mix(it.id); }
@@ -4210,6 +4302,10 @@ function labelSolveSignature(items, fixed, obs) {
   for (let i = 0; i < fixed.length; i++) { const r = fixed[i].r; num(r.x); num(r.y); num(r.w); num(r.h); }
   mix("|o"); num(obs.length);
   for (let i = 0; i < obs.length; i++) { const seg = obs[i]; num(seg.length); for (let j = 0; j < seg.length; j++) { num(seg[j].x); num(seg[j].y); } }
+  if (pins) {
+    mix("|pins"); num(pins.length);
+    for (const p of pins) { mix(p.id); num(p.x); num(p.y); }
+  }
   return h.toString(16) + "/" + items.length + "/" + obs.length;
 }
 /* 开机铭牌延后一帧的开关与兜底。
@@ -4237,9 +4333,13 @@ function renderLabels(vis, dirty) {
      只在"开机头一趟 + 站数够多"时启用，切图纸/日常重绘完全走老路。 */
   if (labelsHeld) { lblHeldSkips++; return; }
   const partial = !!(dirty && dirty.length);
-  const inp = buildLabelInputs(vis);
+  const labelVis = selectMapLabels(vis, map.getZoom(), sel.station, settings.cullLabels);
+  /* 抽稀只少排名字，全部可见车站仍作为圆点障碍，避免名称盖住隐藏站。
+     完整候选沿用旧求解路径，保持精细视图和导出的布局行为。 */
+  const pins = labelVis.length < vis.length ? vis.map((v) => ({ id: v.st.id, x: v.px.x, y: v.px.y })) : undefined;
+  const inp = buildLabelInputs(labelVis);
   const invEarly = settings.darkLabels || bmById(settings.basemap).dark;
-  const keys = partial ? null : labelKeysOf(vis, inp, invEarly, tool === "select");
+  const keys = partial ? null : labelKeysOf(labelVis, inp, invEarly, tool === "select", pins, vis.length);
   /* 整层跳过：keys.all 与上一次全量渲染相同，且这中间没人摘过铭牌（DOM 代数没变）。
      判据用"这一层的输出是否必然相同"，不是"时间够不够快"。跳过时 labelMarkers /
      lastSides / lastHit / 状态栏文字都原样保持上一次的结果 —— 它们本来就该一样。 */
@@ -4275,19 +4375,19 @@ function renderLabels(vis, dirty) {
   if (partial) {
     /* 局部重排：hint 已经被这一帧的部分结果改写过，整体缓存与整层钥匙都不能再信 */
     lblSig = null; lblOut = null; lblKey = null;
-    fresh = solveSides(itemsOf, labelObstacles, 10, 8, lastSides, fixed);
+    fresh = solveSides(itemsOf, labelObstacles, 10, 8, lastSides, fixed, pins);
   } else if (keys.solve === lblSig && lblOut) {
     lblSolveHits++; fresh = lblOut;
   } else {
     lblSolveMisses++;
-    fresh = solveSides(itemsOf, labelObstacles, 10, 8, lastSides, fixed);
+    fresh = solveSides(itemsOf, labelObstacles, 10, 8, lastSides, fixed, pins);
     lblSig = keys.solve; lblOut = fresh;
   }
   const sides = Object.assign({}, keep, fresh);
   lastSides = {}; lastHit = {};
   Object.keys(sides).forEach((k) => { lastSides[k] = sides[k].side; lastHit[k] = !!sides[k].hitLine; });
   const inv = settings.darkLabels || bmById(settings.basemap).dark;
-  let hiddenCount = 0;
+  let hiddenCount = vis.length - labelVis.length;
   const alive = {};
   const canDrag = tool === "select";
   const place = (v, latlng, cls, draggable) => {
@@ -4332,8 +4432,8 @@ function renderLabels(vis, dirty) {
   });
   auto.forEach((v) => {
     const r = sides[v.st.id] || { side: "r", hitLine: false };
-    /* 缩放太小时按"不要压线"隐藏，但换乘站铭牌例外，理由见 labelShouldHide */
-    if (labelShouldHide(r.hitLine, !!v.xfer, settings.cullLabels)) { hiddenCount++; return; }
+    /* 换乘、端点、选中站保留名称，其余候选仍按不压线裁除。 */
+    if (labelShouldHide(r.hitLine, mapLabelPriority(v, sel.station), settings.cullLabels)) { hiddenCount++; return; }
     const cls = "stn-label s-" + r.side + (v.xfer ? " is-x" : "") + (inv ? " stn-label--inv" : "");
     place(v, [v.st.lat, v.st.lng], cls, canDrag);
   });
@@ -5896,7 +5996,7 @@ function openSettings() {
     '<label class="chk" style="--c:var(--signal)"><input type="checkbox" id="setStack"' + (settings.stack !== false ? " checked" : "") + ">共走廊的线路自动并排，不再叠成一坨</label>" +
     '<label class="chk" style="--c:var(--signal)"><input type="checkbox" id="setSnap"' + (settings.snap !== false ? " checked" : "") + ">拖动站点时吸附到横 / 竖 / 45° 对齐线</label>" +
     '<label class="chk" style="--c:var(--signal)"><input type="checkbox" id="setPredict"' + (settings.predict !== false ? " checked" : "") + ">加站模式显示下一站预测虚影</label>" +
-    '<label class="chk" style="--c:var(--signal)"><input type="checkbox" id="setCull"' + (settings.cullLabels !== false ? " checked" : "") + ">缩放太小放不下时隐藏普通站名（换乘站铭牌始终保留，宁可盖住线）</label>" +
+    '<label class="chk" style="--c:var(--signal)"><input type="checkbox" id="setCull"' + (settings.cullLabels !== false ? " checked" : "") + ">缩小时减少普通站名（保留换乘、端点、选中及手动定位站名）</label>" +
     '<label class="chk" style="--c:var(--signal)"><input type="checkbox" id="setDatum"' + (settings.datumFit !== false ? " checked" : "") + ">自动套合 GCJ-02 底图（把路网挪到站点这边；若你是早年在高德上照着路点的站，关掉更准）</label>" +
     '<div class="field" style="margin-top:12px"><label>合并半径</label><input type="range" id="setPx" min="8" max="60" step="2" value="' + (settings.mergePx || 24) + '"><span class="num">' + (settings.mergePx || 24) + "px</span></div>" +
     '<div class="field"><label>PNG 倍率</label><select id="setPng">' + [1, 2, 3, 4].map((n) => '<option value="' + n + '"' + ((settings.pngScale || 2) === n ? " selected" : "") + ">" + n + "×</option>").join("") + '</select><span class="num" id="setPngHint"></span></div>' +
@@ -9559,6 +9659,69 @@ function selfTest() {
         viewLockUntil = performance.now() + 2400; userViewAt = -Infinity;
       }
       return { ok: !bad.length, detail: bad.length ? bad.slice(0, 2).join("；") : detailTxt };
+    });
+    t("总览先抽稀再排版：少算站名、保留全部圆点、放大恢复且不改图纸", () => {
+      const savedP = P, savedSel = sel, savedView = [map.getCenter(), map.getZoom()];
+      const savedCull = settings.cullLabels, savedShow = settings.showLabels, savedLock = viewLockUntil;
+      const originalSolve = solveSides, bad = [];
+      let lowItems = 0, fullItems = 0, detailItems = 0, lowLabels = 0, fullLabels = 0, lowMs = 0, fullMs = 0;
+      try {
+        viewLockUntil = Infinity; settings.showLabels = true; settings.cullLabels = true;
+        P = synthProject(1200, 4);
+        P.lines[1].stations.splice(20, 0, "x100"); P = normalize(P);
+        P.stations.x101.labelOff = { dx: 30, dy: -20, z: 10 };
+        sel = { line: P.lines[0].id, station: null };
+        map.stop(); map.setView(P.center, 10, { animate: false });
+        renderLines(buildCorridorGroups());
+        const vis = collectVisible(), raw = JSON.stringify(P);
+        const candidates = selectMapLabels(vis, 10, null, true);
+        if (!(candidates.length < vis.length / 4)) bad.push("密图候选仍有 " + candidates.length + "/1200，未提前抽稀");
+        const candidateIds = candidates.map((v) => v.st.id).join(",");
+        const shifted = vis.map((v) => Object.assign({}, v, { px: { x: v.px.x + 47.25, y: v.px.y - 31.5 } }));
+        if (selectMapLabels(shifted, 10, null, true).map((v) => v.st.id).join(",") !== candidateIds) bad.push("平移更换了代表站名");
+        let observedItems = 0, observedPins = 0, calls = 0;
+        solveSides = function (items, obs, gap, radius, hint, fixed, pins) {
+          calls++; observedItems = items.length; observedPins = pins ? pins.length : items.length;
+          return originalSolve.apply(null, arguments);
+        };
+        clearMarkerPools();
+        lblSig = null; lblOut = null; lblKey = null;   // zoomend 已预排过，冷跑必须同时清掉解缓存
+        let t0 = performance.now(); renderLabels(vis); lowMs = performance.now() - t0;
+        lowItems = observedItems; lowLabels = Object.keys(labelMarkers).length;
+        if (!calls || lowItems !== candidates.filter((v) => !v.st.labelOff).length) bad.push("候选没接入实际求解，实际 " + lowItems);
+        if (observedPins !== vis.length) bad.push("隐藏站圆点未作为障碍（" + observedPins + "/1200）");
+        for (const v of vis) if (mapLabelPriority(v, null) && !labelMarkers[v.st.id]) bad.push("重要站名未保留：" + v.st.id);
+        if (layerLabel.getLayers().length !== lowLabels) bad.push("抽稀后图层残留孤儿铭牌");
+        const warmCalls = calls; renderLabels(vis);
+        if (calls !== warmCalls) bad.push("相同总览再次渲染仍重新求解");
+        const hidden = vis.find((v) => !candidates.some((c) => c.st.id === v.st.id));
+        sel.station = hidden.st.id; renderLabels(vis);
+        if (!labelMarkers[hidden.st.id]) bad.push("选中隐藏站后站名没有出现");
+        sel.station = null;
+        settings.cullLabels = false; clearMarkerPools();
+        lblSig = null; lblOut = null; lblKey = null;
+        t0 = performance.now(); renderLabels(vis); fullMs = performance.now() - t0;
+        fullItems = observedItems; fullLabels = Object.keys(labelMarkers).length;
+        /* 关闭抽稀是负对照：全量必须重新进入求解，确认少算而非事后藏 DOM。 */
+        if (fullItems !== vis.length - 1 || fullLabels !== vis.length) bad.push("全显负对照未恢复全部标签：" + fullItems + "/" + fullLabels);
+        settings.cullLabels = true;
+        map.setView(P.center, 13, { animate: false }); renderLines(buildCorridorGroups());
+        const detailed = collectVisible(); clearMarkerPools();
+        lblSig = null; lblOut = null; lblKey = null; renderLabels(detailed);
+        detailItems = observedItems;
+        if (detailItems !== detailed.length - 1) bad.push("放大后未恢复完整候选：" + detailItems);
+        if (JSON.stringify(P) !== raw) bad.push("仅切换显示密度却改动了图纸");
+      } catch (e) { bad.push("抛错：" + e.message); }
+      finally {
+        solveSides = originalSolve; settings.cullLabels = savedCull; settings.showLabels = savedShow;
+        P = savedP; sel = savedSel; clearMarkerPools();
+        map.stop(); map.setView(savedView[0], savedView[1], { animate: false }); renderAll();
+        viewLockUntil = Math.max(savedLock, performance.now() + 2400); userViewAt = -Infinity;
+      }
+      return { ok: !bad.length, detail: bad.length ? bad.slice(0, 2).join("；") :
+        "1200 站 Z10：求解 " + fullItems + "→" + lowItems + "，DOM " + fullLabels + "→" + lowLabels +
+        "；含筛选冷排 " + fullMs.toFixed(1) + "→" + lowMs.toFixed(1) + "ms（计时仅供参考）；Z13 恢复 " + detailItems +
+        " 个自动候选；全部圆点障碍、重要/选中站、平移稳定、缓存与图纸不变通过" };
     });
     t("视图记账只认用户发起的移动：程序换图不落账，容器上的真实输入才算", () => {
       const savedP3 = P, savedCenter = P.center.slice(), savedZoom = P.zoom;

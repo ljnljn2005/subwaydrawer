@@ -34,6 +34,8 @@ jobs:
         run: npm run test:speech
       - name: Check curve editing and exports
         run: npm run test:curve
+      - name: Check zoomed-out station labels
+        run: npm run test:labels
       - name: Build static application
         run: npm run build:pages
       - name: Configure Pages
